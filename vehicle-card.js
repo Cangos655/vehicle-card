@@ -163,7 +163,7 @@ class VehicleCard extends HTMLElement {
 
   if (cfg.battery_range) {
     const rangeUnit = _getState(hass, cfg.battery_range)?.attributes?.unit_of_measurement || 'km';
-    html += `<span class="vc-value" style="margin-left:auto" data-entity="${cfg.battery_range}">${range !== null ? range + ' ' + rangeUnit : '—'}</span>`;
+    html += `<span class="vc-value" style="margin-left:auto" data-entity="${cfg.battery_range}">${(range === null || range === '—' || range === '?') ? (range || '—') : range + ' ' + rangeUnit}</span>`;
   }
 
   html += '</div>';

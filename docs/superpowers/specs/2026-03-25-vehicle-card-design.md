@@ -62,6 +62,8 @@ charge_state_plugged: "plugged_in"  # default → badge text "Verbunden", green
 # any other state → shown as-is (raw state string), gray badge
 ```
 
+**Priority:** If a sensor state matches both `charge_state_charging` and `charge_state_plugged` (misconfiguration), `charging` takes precedence (blue badge).
+
 **Summary of badge colors:**
 - Charging (mapped) → blue
 - Plugged / not charging (mapped, sensor only) → green
@@ -128,7 +130,9 @@ doors:
 | Entity not in `hass.states` | Same as `unavailable` |
 | Charge status state not in mapping | Show raw state string, gray badge |
 
-**Doors with partial unavailability:** Unavailable door sensors are excluded from the open/closed count. Example: 3 doors configured, 1 unavailable, 1 open → display "1 offen" (not "1 of 2"). If all configured doors are unavailable → show "—".
+**Doors with partial unavailability:** Unavailable door sensors are excluded from the open/closed count. Example: 3 doors configured, 1 unavailable, 1 open → display "1 offen" (not "1 of 2"). If all configured doors are unavailable → show "—" (click on "—" is a no-op).
+
+**Fuel level unavailable/unknown:** Same rules as battery — `unavailable` → "—", `unknown` → "?".
 
 The card never crashes on missing entities — all entity lookups are guarded.
 
@@ -155,6 +159,8 @@ The card uses a fixed single-column layout. The battery bar stretches to full ca
 | `climate` | `climate`, `klima`, `_ac`, `preconditioning` |
 
 Discovery is used only to **pre-fill** the editor — the user confirms or adjusts before saving.
+
+**Conflict behavior:** Auto-discovery always **replaces** the current editor values (including any existing `doors` list). It does not append or merge. Discovery is triggered only on first open (empty config) or by an explicit "Auto-erkennen" button in the editor.
 
 ---
 
@@ -192,7 +198,7 @@ climate: switch.car_climate
 - `setConfig(config)` — validates config, throws `Error` with descriptive message if invalid (e.g. `doors` is not an array). Stores config reference.
 - `getCardSize()` — returns `3` (approx. height hint for dashboard layout)
 - `static getConfigElement()` — returns `document.createElement('vehicle-card-editor')` (wires up visual editor)
-- `static getStubConfig()` — returns minimal default config for "Add Card" dialog
+- `static getStubConfig()` — returns `{}` (empty object); the editor's auto-discovery fills in suggestions when the card is first added
 
 **Doors editor:** The editor renders a dynamic list for `doors`. Each entry has an `ha-entity-picker` + remove button. An "Add door" button appends a new empty picker. The list maps directly to the `doors` array in config.
 

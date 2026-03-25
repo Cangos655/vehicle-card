@@ -2,8 +2,31 @@ const CARD_VERSION = "1.0.0";
 
 // ─── Auto-Discovery ──────────────────────────────────────────────────────────
 function discoverVehicleEntities(hass) {
-  // stub — returns empty object for now
-  return {};
+  const patterns = {
+    battery_level:  ['battery', 'soc', 'ladezustand'],
+    battery_range:  ['range', 'reichweite'],
+    charge_status:  ['charg', 'charging', 'laden'],
+    fuel_level:     ['fuel', 'tank', 'kraftstoff'],
+    doors:          ['door', 'tür', 'window', 'fenster', 'trunk'],
+    odometer:       ['odometer', 'mileage', 'kilometerstand'],
+    climate:        ['climate', 'klima', '_ac', 'preconditioning'],
+  };
+
+  const result = {};
+  const ids = Object.keys(hass.states);
+
+  for (const [field, keywords] of Object.entries(patterns)) {
+    const matches = ids.filter(id =>
+      keywords.some(kw => id.toLowerCase().includes(kw))
+    );
+    if (field === 'doors') {
+      if (matches.length) result.doors = matches;
+    } else {
+      if (matches.length) result[field] = matches[0];
+    }
+  }
+
+  return result;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────

@@ -198,6 +198,33 @@ class VehicleCard extends HTMLElement {
     </div>`;
 }
 
+  _renderDoors() {
+  const cfg = this._config;
+  if (!cfg.doors || cfg.doors.length === 0) return '';
+
+  const available = cfg.doors.filter(id => {
+    const s = _getState(this._hass, id);
+    return s && s.state !== 'unavailable' && s.state !== 'unknown';
+  });
+
+  if (available.length === 0) {
+    return `<div class="vc-row no-click"><span class="vc-label">🚪 Türen</span><span class="vc-value">—</span></div>`;
+  }
+
+  const openDoors = available.filter(id => this._hass.states[id].state === 'on');
+  const openCount = openDoors.length;
+  const clickTarget = openCount > 0 ? openDoors[0] : cfg.doors[0];
+
+  const color = openCount > 0 ? 'red' : 'green';
+  const text  = openCount > 0 ? `${openCount} offen` : 'alle zu';
+
+  return `
+    <div class="vc-row" data-entity="${clickTarget}">
+      <span class="vc-label">🚪 Türen</span>
+      <span class="vc-value ${color}">${text}</span>
+    </div>`;
+}
+
   _attachListeners() {
     this.querySelectorAll('[data-entity]').forEach(el => {
       el.addEventListener('click', (e) => {

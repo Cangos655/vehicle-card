@@ -97,9 +97,70 @@ class VehicleCard extends HTMLElement {
     </style>
   `;
   }
+  _renderHeader() {
+    const cfg = this._config;
+    const hass = this._hass;
+    const name = cfg.name || 'Fahrzeug';
+    let badgeHtml = '';
+
+    if (cfg.charge_status) {
+      const val = _stateVal(hass, cfg.charge_status);
+      let text = val;
+      let cls = 'default';
+
+      const stCharging = cfg.charge_state_charging || 'charging';
+      const stPlugged  = cfg.charge_state_plugged  || 'plugged_in';
+
+      const entity = _getState(hass, cfg.charge_status);
+      if (entity) {
+        const raw = entity.state;
+        if (raw === 'on' && entity.attributes.device_class === 'battery_charging') {
+          text = 'Lädt'; cls = 'charging';
+        } else if (raw === stCharging) {
+          text = 'Lädt'; cls = 'charging';
+        } else if (raw === stPlugged) {
+          text = 'Verbunden'; cls = 'plugged';
+        } else if (raw === 'on') {
+          text = 'Lädt'; cls = 'charging';
+        } else if (raw === 'off') {
+          text = 'Bereit'; cls = 'default';
+        }
+      }
+      badgeHtml = `<span class="vc-badge ${cls}" data-entity="${cfg.charge_status}">${text}</span>`;
+    }
+
+    return `
+      <div class="vc-header">
+        <span class="vc-name">🚗 ${name}</span>
+        ${badgeHtml}
+      </div>`;
+  }
+
+  _attachListeners() {
+    this.querySelectorAll('[data-entity]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const entityId = el.dataset.entity;
+        if (!entityId) return;
+        this.dispatchEvent(new CustomEvent('hass-more-info', {
+          detail: { entityId },
+          bubbles: true,
+          composed: true,
+        }));
+      });
+    });
+  }
+
   _render() {
-    if (!this._config) return;
-    this.innerHTML = `<ha-card>${this._getStyles()}<div class="vc-card">Vehicle Card v${CARD_VERSION}</div></ha-card>`;
+    if (!this._config || !this._hass) return;
+    this.innerHTML = `
+      <ha-card>
+        ${this._getStyles()}
+        <div class="vc-card">
+          ${this._renderHeader()}
+        </div>
+      </ha-card>`;
+    this._attachListeners();
   }
 }
 customElements.define('vehicle-card', VehicleCard);

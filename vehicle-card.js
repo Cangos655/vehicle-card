@@ -1,35 +1,19 @@
-const CARD_VERSION = "1.0.0";
+const CARD_VERSION = "1.0.2";
 
-// ─── Auto-Discovery ──────────────────────────────────────────────────────────
-function discoverVehicleEntities(hass) {
-  const patterns = {
-    battery_level:  ['battery', 'soc', 'ladezustand'],
-    battery_range:  ['range', 'reichweite'],
-    charge_status:  ['charg', 'charging', 'laden'],
-    fuel_level:     ['fuel', 'tank', 'kraftstoff'],
-    doors:          ['door', 'tür', 'window', 'fenster', 'trunk'],
-    odometer:       ['odometer', 'mileage', 'kilometerstand'],
-    climate:        ['climate', 'klima', '_ac', 'preconditioning'],
-  };
-
-  const result = {};
-  const ids = Object.keys(hass.states);
-
-  for (const [field, keywords] of Object.entries(patterns)) {
-    let matches = ids.filter(id =>
-      keywords.some(kw => id.toLowerCase().includes(kw))
-    );
-    if (field === 'doors') {
-      // Only binary_sensors make sense as door/window sensors
-      matches = matches.filter(id => id.startsWith('binary_sensor.'));
-      if (matches.length) result.doors = matches;
-    } else {
-      if (matches.length) result[field] = matches[0];
-    }
-  }
-
-  return result;
-}
+// ─── Editor Schema ────────────────────────────────────────────────────────────
+const EDITOR_SCHEMA = [
+  { name: 'name',          label: 'Name (optional)',               selector: { text: {} } },
+  { name: 'battery_level', label: '🔋 Akkustand (Sensor %)',       selector: { entity: {} } },
+  { name: 'battery_range', label: '📏 Reichweite (Sensor km)',     selector: { entity: {} } },
+  { name: 'charge_status', label: '⚡ Ladestatus (Sensor/Binary)', selector: { entity: {} } },
+  { name: 'fuel_level',    label: '⛽ Tankstand (Sensor %)',       selector: { entity: {} } },
+  { name: 'odometer',      label: '📍 Kilometerstand (Sensor)',    selector: { entity: {} } },
+  { name: 'climate',       label: '❄️ Klimaanlage (Switch)',       selector: { entity: { domain: 'switch' } } },
+  { name: 'door_1',        label: '🚪 Tür / Fenster 1',           selector: { entity: { domain: 'binary_sensor' } } },
+  { name: 'door_2',        label: '🚪 Tür / Fenster 2',           selector: { entity: { domain: 'binary_sensor' } } },
+  { name: 'door_3',        label: '🚪 Tür / Fenster 3',           selector: { entity: { domain: 'binary_sensor' } } },
+  { name: 'door_4',        label: '🚪 Tür / Fenster 4',           selector: { entity: { domain: 'binary_sensor' } } },
+];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function _getState(hass, entityId) {
@@ -65,120 +49,54 @@ function _fuelColor(pct) {
 
 // ─── Editor ──────────────────────────────────────────────────────────────────
 class VehicleCardEditor extends HTMLElement {
-  setConfig(config) {
-    this._config = { ...config };
-    if (this._hass) this._render();
+  constructor() {
+    super();
+    this.attachShadow({ mode: 'open' });
+    this._config      = {};
+    this._hass        = null;
+    this._initialized = false;
   }
 
   set hass(hass) {
     this._hass = hass;
-    // Auto-discover on first open if config is empty
-    if (this._config && !this._config._discovered) {
-      const discovered = discoverVehicleEntities(hass);
-      this._config = { ...this._config, ...discovered, _discovered: true };
+    if (this._form) this._form.hass = hass;
+  }
+
+  setConfig(config) {
+    // Migrate legacy 'doors' array → door_1..door_4
+    if (Array.isArray(config.doors)) {
+      const migrated = { ...config };
+      config.doors.slice(0, 4).forEach((id, i) => { migrated[`door_${i + 1}`] = id; });
+      delete migrated.doors;
+      this._config = migrated;
+    } else {
+      this._config = config || {};
     }
-    this._render();
+    if (this._form) this._form.data = this._config;
+    if (!this._initialized) this._initialize();
   }
 
-  _render() {
-    if (!this._hass || !this._config) return;
-    const cfg = this._config;
-
-    const singleFields = [
-      { key: 'battery_level', label: '🔋 Akkustand (Sensor %)' },
-      { key: 'battery_range', label: '📏 Reichweite (Sensor km)' },
-      { key: 'charge_status', label: '⚡ Ladestatus (Sensor/Binary)' },
-      { key: 'fuel_level',    label: '⛽ Tankstand (Sensor %)' },
-      { key: 'odometer',      label: '📍 Kilometerstand (Sensor)' },
-      { key: 'climate',       label: '❄️ Klimaanlage (Switch)' },
-    ];
-
-    const doorsList = Array.isArray(cfg.doors) ? cfg.doors : [];
-
-    this.innerHTML = `
-      <style>
-        .vc-editor { padding: 8px; display: flex; flex-direction: column; gap: 10px; }
-        .vc-editor label { font-size: 0.85em; color: var(--secondary-text-color); display: block; margin-bottom: 2px; }
-        .vc-door-row { display: flex; align-items: center; gap: 6px; }
-        .vc-door-row ha-entity-picker { flex: 1; }
-        .vc-remove-btn { cursor: pointer; color: var(--error-color); font-size: 1.1em; padding: 0 4px; }
-        .vc-add-btn { cursor: pointer; color: var(--primary-color); font-size: 0.85em; padding: 4px; }
-      </style>
-      <div class="vc-editor">
-        <ha-textfield label="Name (optional, z.B. Mein Auto)" data-field="name"></ha-textfield>
-        ${singleFields.map(f => `
-          <div>
-            <label>${f.label}</label>
-            <ha-entity-picker data-field="${f.key}" allow-custom-entity></ha-entity-picker>
-          </div>`).join('')}
-        <div>
-          <label>🚪 Türen / Fenster (mehrere möglich)</label>
-          <div id="doors-list">
-            ${doorsList.map((id, i) => `
-              <div class="vc-door-row" data-door-index="${i}">
-                <ha-entity-picker data-field="door-${i}" allow-custom-entity></ha-entity-picker>
-                <span class="vc-remove-btn" data-remove-door="${i}">✕</span>
-              </div>`).join('')}
-          </div>
-          <div class="vc-add-btn" id="add-door">+ Tür hinzufügen</div>
-        </div>
-      </div>`;
-
-    // Wire up pickers and textfield — set properties AFTER DOM creation
-    this.querySelectorAll('ha-entity-picker, ha-textfield').forEach(el => {
-      el.hass = this._hass;
-      // Set value as JS property (not HTML attribute)
-      const field = el.dataset.field;
-      if (field === 'name') {
-        el.value = cfg.name || '';
-      } else if (field && field.startsWith('door-')) {
-        const idx = parseInt(field.split('-')[1]);
-        el.value = (cfg.doors || [])[idx] || '';
-      } else if (field) {
-        el.value = cfg[field] || '';
-      }
-      el.addEventListener('value-changed', (e) => {
-        const field = el.dataset.field;
-        if (!field) return;
-        const val = e.detail.value;
-        if (field === 'name') {
-          this._config = { ...this._config, name: val };
-        } else if (field.startsWith('door-')) {
-          const idx = parseInt(field.split('-')[1]);
-          const doors = [...(this._config.doors || [])];
-          doors[idx] = val;
-          this._config = { ...this._config, doors };
-        } else {
-          this._config = { ...this._config, [field]: val };
-        }
-        this._fireChange();
-      });
-    });
-
-    // Add door
-    this.querySelector('#add-door')?.addEventListener('click', () => {
-      const doors = [...(this._config.doors || []), ''];
-      this._config = { ...this._config, doors };
-      this._render();
-    });
-
-    // Remove door
-    this.querySelectorAll('[data-remove-door]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const idx = parseInt(btn.dataset.removeDoor);
-        const doors = (this._config.doors || []).filter((_, i) => i !== idx);
-        this._config = { ...this._config, doors };
-        this._render();
-        this._fireChange();
-      });
-    });
+  connectedCallback() {
+    if (!this._initialized) this._initialize();
   }
 
-  _fireChange() {
-    const cfg = { ...this._config };
-    delete cfg._discovered;
-    if (cfg.doors && cfg.doors.length === 0) delete cfg.doors;
-    this.dispatchEvent(new CustomEvent('config-changed', { detail: { config: cfg }, bubbles: true, composed: true }));
+  _initialize() {
+    this._initialized = true;
+    const form = document.createElement('ha-form');
+    form.schema       = EDITOR_SCHEMA;
+    form.data         = this._config;
+    form.hass         = this._hass;
+    form.computeLabel = s => s.label || s.name;
+    form.addEventListener('value-changed', e => {
+      this._config = e.detail.value;
+      this.dispatchEvent(new CustomEvent('config-changed', {
+        detail:  { config: this._config },
+        bubbles: true, composed: true,
+      }));
+    });
+    this._form = form;
+    this.shadowRoot.innerHTML = '';
+    this.shadowRoot.appendChild(form);
   }
 }
 customElements.define('vehicle-card-editor', VehicleCardEditor);
@@ -192,10 +110,15 @@ class VehicleCard extends HTMLElement {
     return {};
   }
   setConfig(config) {
-    if (config.doors !== undefined && !Array.isArray(config.doors)) {
-      throw new Error('vehicle-card: doors must be a list of entity IDs');
+    // Migrate legacy 'doors' array → door_1..door_4
+    if (Array.isArray(config.doors)) {
+      const migrated = { ...config };
+      config.doors.slice(0, 4).forEach((id, i) => { migrated[`door_${i + 1}`] = id; });
+      delete migrated.doors;
+      this._config = migrated;
+    } else {
+      this._config = config;
     }
-    this._config = config;
   }
   getCardSize() { return 3; }
   set hass(hass) {
@@ -338,9 +261,10 @@ class VehicleCard extends HTMLElement {
 
   _renderDoors() {
   const cfg = this._config;
-  if (!cfg.doors || cfg.doors.length === 0) return '';
+  const allDoors = [cfg.door_1, cfg.door_2, cfg.door_3, cfg.door_4].filter(Boolean);
+  if (allDoors.length === 0) return '';
 
-  const available = cfg.doors.filter(id => {
+  const available = allDoors.filter(id => {
     const s = _getState(this._hass, id);
     return s && s.state !== 'unavailable' && s.state !== 'unknown';
   });
@@ -353,8 +277,8 @@ class VehicleCard extends HTMLElement {
     const st = this._hass.states[id].state;
     return st === 'on' || st === 'open';
   });
-  const openCount = openDoors.length;
-  const clickTarget = openCount > 0 ? openDoors[0] : cfg.doors[0];
+  const openCount  = openDoors.length;
+  const clickTarget = openCount > 0 ? openDoors[0] : allDoors[0];
 
   const color = openCount > 0 ? 'red' : 'green';
   const text  = openCount > 0 ? `${openCount} offen` : 'alle zu';
@@ -408,7 +332,7 @@ class VehicleCard extends HTMLElement {
     if (!this._config || !this._hass) return;
 
     const hasAnyField = ['battery_level','battery_range','charge_status','fuel_level',
-      'doors','odometer','climate'].some(k => this._config[k]);
+      'door_1','door_2','door_3','door_4','odometer','climate'].some(k => this._config[k]);
 
     if (!hasAnyField) {
       this.innerHTML = `

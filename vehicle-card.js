@@ -158,7 +158,7 @@ class VehicleCard extends HTMLElement {
       <div class="vc-bar-wrap" data-entity="${cfg.battery_level}">
         <div class="vc-bar" style="width:${barWidth}%;background:${barColor}"></div>
       </div>
-      <span class="vc-value ${color}" data-entity="${cfg.battery_level}">${pct !== null ? pct + '%' : '—'}</span>`;
+      <span class="vc-value ${color}" data-entity="${cfg.battery_level}">${(pct === '—' || pct === '?' || pct === null) ? (pct || '—') : pct + '%'}</span>`;
   }
 
   if (cfg.battery_range) {
@@ -176,7 +176,7 @@ class VehicleCard extends HTMLElement {
   const val = _stateVal(this._hass, cfg.fuel_level);
   const color = _fuelColor(val);
   const unit = _getState(this._hass, cfg.fuel_level)?.attributes?.unit_of_measurement || '%';
-  const display = val !== null ? val + unit : '—';
+  const display = (val === null || val === '—' || val === '?') ? (val || '—') : val + unit;
   return `
     <div class="vc-row" data-entity="${cfg.fuel_level}">
       <span class="vc-label">⛽ Tank</span>

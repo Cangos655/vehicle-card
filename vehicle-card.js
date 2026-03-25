@@ -1,4 +1,4 @@
-const CARD_VERSION = "1.0.3";
+const CARD_VERSION = "1.0.4";
 
 // ─── Editor Schema ────────────────────────────────────────────────────────────
 const EDITOR_SCHEMA = [
@@ -26,21 +26,30 @@ function _stateVal(hass, entityId) {
 }
 
 function _batteryColor(pct) {
-  if (pct === null || pct === '—' || pct === '?') return '';
+  if (pct === null || pct === '—' || pct === '?') return 'var(--secondary-text-color, #8e8e93)';
   const n = parseFloat(pct);
-  if (isNaN(n)) return '';
-  if (n < 20) return 'red';
-  if (n < 50) return 'orange';
-  return 'green';
+  if (isNaN(n)) return 'var(--secondary-text-color, #8e8e93)';
+  if (n < 20) return '#ff3b30';
+  if (n < 50) return '#ffd60a';
+  return '#34c759';
 }
 
-function _fuelColor(pct) {
-  if (pct === null || pct === '—' || pct === '?') return '';
+function _fuelBarColor(pct) {
+  if (pct === null || pct === '—' || pct === '?') return 'rgba(120,120,128,0.3)';
   const n = parseFloat(pct);
-  if (isNaN(n)) return '';
-  if (n < 15) return 'red';
-  if (n < 30) return 'orange';
-  return '';
+  if (isNaN(n)) return 'rgba(120,120,128,0.3)';
+  if (n < 15) return '#ff3b30';
+  if (n < 30) return '#ffd60a';
+  return '#34c759';
+}
+
+function _fuelTextColor(pct) {
+  if (pct === null || pct === '—' || pct === '?') return 'var(--secondary-text-color, #8e8e93)';
+  const n = parseFloat(pct);
+  if (isNaN(n)) return 'var(--secondary-text-color, #8e8e93)';
+  if (n < 15) return '#ff3b30';
+  if (n < 30) return '#ffd60a';
+  return 'var(--primary-text-color, #1c1c1e)';
 }
 
 // ─── Editor ──────────────────────────────────────────────────────────────────
@@ -91,231 +100,388 @@ customElements.define('vehicle-card-editor', VehicleCardEditor);
 
 // ─── Card ────────────────────────────────────────────────────────────────────
 class VehicleCard extends HTMLElement {
+  constructor() {
+    super();
+    this.attachShadow({ mode: 'open' });
+    this._hass   = null;
+    this._config = {};
+  }
+
   static getConfigElement() {
     return document.createElement('vehicle-card-editor');
   }
   static getStubConfig() {
     return {};
   }
+
   setConfig(config) {
     this._config = config;
+    if (this._hass) this._render();
   }
+
   getCardSize() { return 3; }
+
   set hass(hass) {
     this._hass = hass;
     this._render();
   }
-  _getStyles() {
-    return `
-    <style>
-      ha-card { background: var(--card-background-color); border-radius: 12px; overflow: hidden; }
-      .vc-card { padding: 16px; font-family: var(--primary-font-family); color: var(--primary-text-color); }
-      .vc-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
-      .vc-name { font-size: 1.1em; font-weight: 600; }
-      .vc-badge { font-size: 0.75em; font-weight: 600; padding: 3px 10px; border-radius: 20px; letter-spacing: 0.03em; }
-      .vc-badge.charging { background: #1a73e840; color: #64b5f6; }
-      .vc-badge.plugged   { background: #1b5e2040; color: #81c784; }
-      .vc-badge.default   { background: #ffffff18; color: var(--secondary-text-color); }
-      .vc-body { display: flex; flex-direction: column; gap: 10px; }
-      .vc-row { display: flex; align-items: center; gap: 10px; cursor: pointer; border-radius: 8px; padding: 4px 6px; transition: background 0.15s; }
-      .vc-row:hover { background: #ffffff0d; }
-      .vc-row.no-click { cursor: default; }
-      .vc-row.no-click:hover { background: transparent; }
-      .vc-label { font-size: 0.82em; color: var(--secondary-text-color); min-width: 80px; }
-      .vc-value { font-size: 0.95em; font-weight: 500; }
-      .vc-value.red    { color: #ef5350; }
-      .vc-value.orange { color: #ffa726; }
-      .vc-value.green  { color: #66bb6a; }
-      .vc-divider { border: none; border-top: 1px solid #ffffff12; margin: 4px 0; }
-      .vc-bar-wrap { flex: 1; height: 6px; background: #ffffff1a; border-radius: 3px; overflow: hidden; min-width: 60px; }
-      .vc-bar { height: 100%; border-radius: 3px; transition: width 0.4s; }
-      .vc-footer { display: flex; justify-content: space-between; margin-top: 4px; }
-      .vc-toggle-row { display: flex; align-items: center; gap: 10px; padding: 4px 6px; }
-      .vc-toggle-label { font-size: 0.82em; color: var(--secondary-text-color); }
-      .vc-toggle-status { font-size: 0.9em; font-weight: 500; cursor: pointer; padding: 2px 8px; border-radius: 6px; border: 1px solid #ffffff22; }
-      .vc-toggle-status.on  { color: #66bb6a; border-color: #66bb6a44; }
-      .vc-toggle-status.off { color: var(--secondary-text-color); }
-    </style>
-  `;
+
+  _moreInfo(entityId) {
+    if (!entityId) return;
+    this.dispatchEvent(new CustomEvent('hass-more-info', {
+      detail: { entityId }, bubbles: true, composed: true,
+    }));
   }
-  _renderHeader() {
-    const cfg = this._config;
-    const hass = this._hass;
-    const name = cfg.name || 'Fahrzeug';
-    let badgeHtml = '';
 
-    if (cfg.charge_status) {
-      const val = _stateVal(hass, cfg.charge_status);
-      let text = val;
-      let cls = 'default';
-
-      const stCharging = cfg.charge_state_charging || 'charging';
-      const stPlugged  = cfg.charge_state_plugged  || 'plugged_in';
-
-      const entity = _getState(hass, cfg.charge_status);
-      if (entity) {
-        const raw = entity.state;
-        if (raw === 'on' && entity.attributes.device_class === 'battery_charging') {
-          text = 'Lädt'; cls = 'charging';
-        } else if (raw === stCharging) {
-          text = 'Lädt'; cls = 'charging';
-        } else if (raw === stPlugged) {
-          text = 'Verbunden'; cls = 'plugged';
-        } else if (raw === 'on') {
-          text = 'Lädt'; cls = 'charging';
-        } else if (raw === 'off') {
-          text = 'Bereit'; cls = 'default';
-        }
+  _chargeBadgeHtml() {
+    const c = this._config, hass = this._hass;
+    if (!c.charge_status) return '';
+    const entity = _getState(hass, c.charge_status);
+    let text = '—', cls = 'badge-default';
+    if (entity) {
+      const raw = entity.state;
+      const stCharging = c.charge_state_charging || 'charging';
+      const stPlugged  = c.charge_state_plugged  || 'plugged_in';
+      if (raw === stCharging || raw === 'on') {
+        text = 'Lädt'; cls = 'badge-charging';
+      } else if (raw === stPlugged) {
+        text = 'Verbunden'; cls = 'badge-plugged';
+      } else if (raw === 'off') {
+        text = 'Bereit'; cls = 'badge-default';
+      } else if (raw === 'unavailable') {
+        text = '—'; cls = 'badge-default';
+      } else {
+        text = raw; cls = 'badge-default';
       }
-      badgeHtml = `<span class="vc-badge ${cls}" data-entity="${cfg.charge_status}">${text}</span>`;
+    }
+    return `<div class="header-badge ${cls}" data-entity="${c.charge_status}">${text}</div>`;
+  }
+
+  _batteryTileHtml() {
+    const c = this._config, hass = this._hass;
+    if (!c.battery_level) return '';
+    const pct    = _stateVal(hass, c.battery_level);
+    const numPct = parseFloat(pct) || 0;
+    const valid  = pct !== null && pct !== '—' && pct !== '?';
+    const barH   = valid ? Math.min(100, Math.max(0, numPct)).toFixed(1) : 0;
+    const color  = _batteryColor(pct);
+    const numStr = valid ? pct : (pct || '—');
+
+    let rangeHtml = '';
+    if (c.battery_range) {
+      const range     = _stateVal(hass, c.battery_range);
+      const rangeUnit = _getState(hass, c.battery_range)?.attributes?.unit_of_measurement || 'km';
+      const rv        = (range !== null && range !== '—' && range !== '?');
+      rangeHtml = `<div class="stat-sub" data-entity="${c.battery_range}">${rv ? range + '\u202f' + rangeUnit : (range || '—')}</div>`;
     }
 
     return `
-      <div class="vc-header">
-        <span class="vc-name">🚗 ${name}</span>
-        ${badgeHtml}
+      <div class="tile tile-vbar clickable" data-entity="${c.battery_level}">
+        <div class="vbar-wrap">
+          <div class="vbar-fill" style="height:${barH}%;background:${color}"></div>
+        </div>
+        <div class="stat-content">
+          <div class="stat-lbl">Akku</div>
+          <div>
+            <div class="stat-num" style="color:${color}">${numStr}</div>
+            <div class="stat-unit">%</div>
+            ${rangeHtml}
+          </div>
+        </div>
       </div>`;
   }
 
-  _renderBattery() {
-  const cfg = this._config;
-  const hass = this._hass;
-  if (!cfg.battery_level && !cfg.battery_range) return '';
+  _fuelTileHtml() {
+    const c = this._config, hass = this._hass;
+    if (!c.fuel_level) return '';
+    const val    = _stateVal(hass, c.fuel_level);
+    const numVal = parseFloat(val) || 0;
+    const valid  = val !== null && val !== '—' && val !== '?';
+    const barH   = valid ? Math.min(100, Math.max(0, numVal)).toFixed(1) : 0;
+    const barClr = _fuelBarColor(val);
+    const txtClr = _fuelTextColor(val);
+    const numStr = valid ? val : (val || '—');
 
-  const pct   = _stateVal(hass, cfg.battery_level);
-  const range = _stateVal(hass, cfg.battery_range);
-  const color = _batteryColor(pct);
-  const numPct = parseFloat(pct) || 0;
-  const barWidth = (pct === '—' || pct === '?' || pct === null) ? 0 : Math.min(100, Math.max(0, numPct));
-
-  const barColorMap = { red: '#ef5350', orange: '#ffa726', green: '#66bb6a' };
-  const barColor = barColorMap[color] || '#90a4ae';
-
-  let html = '<div class="vc-row">';
-
-  if (cfg.battery_level) {
-    html += `
-      <span class="vc-label">🔋 Akku</span>
-      <div class="vc-bar-wrap" data-entity="${cfg.battery_level}">
-        <div class="vc-bar" style="width:${barWidth}%;background:${barColor}"></div>
-      </div>
-      <span class="vc-value ${color}" data-entity="${cfg.battery_level}">${(pct === '—' || pct === '?' || pct === null) ? (pct || '—') : pct + '%'}</span>`;
+    return `
+      <div class="tile tile-vbar clickable" data-entity="${c.fuel_level}">
+        <div class="vbar-wrap">
+          <div class="vbar-fill" style="height:${barH}%;background:${barClr}"></div>
+        </div>
+        <div class="stat-content">
+          <div class="stat-lbl">Tank</div>
+          <div>
+            <div class="stat-num" style="color:${txtClr}">${numStr}</div>
+            <div class="stat-unit">%</div>
+          </div>
+        </div>
+      </div>`;
   }
 
-  if (cfg.battery_range) {
-    const rangeUnit = _getState(hass, cfg.battery_range)?.attributes?.unit_of_measurement || 'km';
-    html += `<span class="vc-value" style="margin-left:auto" data-entity="${cfg.battery_range}">${(range === null || range === '—' || range === '?') ? (range || '—') : range + ' ' + rangeUnit}</span>`;
+  _climateTileHtml() {
+    const c = this._config, hass = this._hass;
+    if (!c.climate) return '';
+    const entity = _getState(hass, c.climate);
+    const isOn   = entity?.state === 'on';
+    return `
+      <div class="tile tile-simple clickable" data-entity="${c.climate}">
+        <div class="stat-content stat-pad">
+          <div class="stat-lbl">Klimaanlage</div>
+          <div class="climate-pill ${isOn ? 'on' : 'off'}" data-toggle="${c.climate}">
+            <span class="climate-dot"></span>
+            <span>${isOn ? 'AN' : 'AUS'}</span>
+          </div>
+        </div>
+      </div>`;
   }
 
-  html += '</div>';
-  return html;
-}
-
-  _renderFuel() {
-  const cfg = this._config;
-  if (!cfg.fuel_level) return '';
-  const val = _stateVal(this._hass, cfg.fuel_level);
-  const color = _fuelColor(val);
-  const unit = _getState(this._hass, cfg.fuel_level)?.attributes?.unit_of_measurement || '%';
-  const display = (val === null || val === '—' || val === '?') ? (val || '—') : val + unit;
-  return `
-    <div class="vc-row" data-entity="${cfg.fuel_level}">
-      <span class="vc-label">⛽ Tank</span>
-      <span class="vc-value ${color}">${display}</span>
-    </div>`;
-}
-
-  _renderClimate() {
-  const cfg = this._config;
-  if (!cfg.climate) return '';
-  const entity = _getState(this._hass, cfg.climate);
-  const isOn = entity?.state === 'on';
-  const statusText = isOn ? 'AN' : 'AUS';
-  const statusCls  = isOn ? 'on' : 'off';
-  return `
-    <div class="vc-toggle-row">
-      <span class="vc-toggle-label" data-entity="${cfg.climate}">❄️ Klimaanlage</span>
-      <span class="vc-toggle-status ${statusCls}" data-toggle="${cfg.climate}">${statusText}</span>
-    </div>`;
-}
-
-  _renderOdometer() {
-  const cfg = this._config;
-  if (!cfg.odometer) return '';
-  const val = _stateVal(this._hass, cfg.odometer);
-  const unit = _getState(this._hass, cfg.odometer)?.attributes?.unit_of_measurement || 'km';
-  const num = parseFloat(val);
-  const display = val === '—' || val === '?' || val === null
-    ? val || '—'
-    : isNaN(num) ? val : num.toLocaleString('de-DE') + ' ' + unit;
-  return `
-    <div class="vc-row" data-entity="${cfg.odometer}">
-      <span class="vc-label">📍 km-Stand</span>
-      <span class="vc-value">${display}</span>
-    </div>`;
-}
-
-  _attachListeners() {
-    this.querySelectorAll('[data-entity]').forEach(el => {
-      el.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const entityId = el.dataset.entity;
-        if (!entityId) return;
-        this.dispatchEvent(new CustomEvent('hass-more-info', {
-          detail: { entityId },
-          bubbles: true,
-          composed: true,
-        }));
-      });
-    });
-    this.querySelectorAll('[data-toggle]').forEach(el => {
-      el.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const entityId = el.dataset.toggle;
-        this._hass.callService('homeassistant', 'toggle', { entity_id: entityId });
-      });
-    });
+  _odometerTileHtml() {
+    const c = this._config, hass = this._hass;
+    if (!c.odometer) return '';
+    const val   = _stateVal(hass, c.odometer);
+    const unit  = _getState(hass, c.odometer)?.attributes?.unit_of_measurement || 'km';
+    const num   = parseFloat(val);
+    const valid = val !== null && val !== '—' && val !== '?';
+    const disp  = !valid ? (val || '—') : isNaN(num) ? val : num.toLocaleString('de-DE');
+    return `
+      <div class="tile tile-simple clickable" data-entity="${c.odometer}">
+        <div class="stat-content stat-pad">
+          <div class="stat-lbl">km-Stand</div>
+          <div>
+            <div class="stat-num stat-num-sm">${disp}</div>
+            <div class="stat-unit">${unit}</div>
+          </div>
+        </div>
+      </div>`;
   }
 
   _render() {
     if (!this._config || !this._hass) return;
+    const c = this._config;
 
     const hasAnyField = ['battery_level','battery_range','charge_status','fuel_level',
-      'odometer','climate'].some(k => this._config[k]);
+      'odometer','climate'].some(k => c[k]);
 
-    if (!hasAnyField) {
-      this.innerHTML = `
-        <ha-card>
-          ${this._getStyles()}
-          <div class="vc-card">
-            <div class="vc-header"><span class="vc-name">🚗 ${this._config.name || 'Fahrzeug'}</span></div>
-            <p style="color:var(--secondary-text-color);font-size:0.85em;padding:8px 6px">
-              Keine Entitäten konfiguriert
-            </p>
+    const badge   = this._chargeBadgeHtml();
+    const battery = this._batteryTileHtml();
+    const fuel    = this._fuelTileHtml();
+    const climate = this._climateTileHtml();
+    const odometer = this._odometerTileHtml();
+    const tiles   = [battery, fuel, climate, odometer].filter(Boolean).join('');
+
+    this.shadowRoot.innerHTML = `
+      <style>
+        :host { display: block; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        .card {
+          background: var(--card-background-color, #fff);
+          border-radius: 20px;
+          padding: 18px 18px 16px;
+          font-family: var(--paper-font-body1_-_font-family, system-ui, sans-serif);
+          color: var(--primary-text-color, #1c1c1e);
+        }
+
+        /* ── HEADER ── */
+        .card-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 14px;
+          padding: 0 2px;
+        }
+        .header-title { display: flex; align-items: center; gap: 7px; }
+        .header-title-icon {
+          width: 26px; height: 26px;
+          background: var(--secondary-background-color, #f2f2f7);
+          border-radius: 7px;
+          display: flex; align-items: center; justify-content: center;
+          font-size: 13px;
+        }
+        .header-title-text { font-size: 15px; font-weight: 600; letter-spacing: -0.2px; }
+
+        .header-badge {
+          display: flex; align-items: center;
+          border-radius: 10px; padding: 5px 9px;
+          font-size: 12px; font-weight: 600; letter-spacing: 0.2px;
+          cursor: pointer;
+          transition: opacity 0.15s;
+        }
+        .header-badge:hover  { opacity: 0.7; }
+        .header-badge:active { opacity: 0.5; }
+        .badge-charging { background: rgba(52,199,89,0.12); color: #34c759; }
+        .badge-plugged  { background: rgba(52,199,89,0.08); color: #34c759; }
+        .badge-default  {
+          background: var(--secondary-background-color, #f2f2f7);
+          color: var(--secondary-text-color, #8e8e93);
+        }
+
+        /* ── GRID ── */
+        .card-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 8px;
+        }
+
+        /* ── TILE BASE ── */
+        .tile {
+          background: var(--secondary-background-color, rgba(120,120,128,0.08));
+          border: 1px solid var(--divider-color, rgba(128,128,128,0.12));
+          border-radius: 16px;
+          overflow: hidden;
+          transition: opacity 0.15s, transform 0.12s;
+        }
+        .tile.clickable { cursor: pointer; }
+        .tile.clickable:hover  { opacity: 0.82; }
+        .tile.clickable:active { transform: scale(0.97); }
+
+        /* ── VBAR TILE (battery, fuel) ── */
+        .tile-vbar {
+          display: flex;
+          align-items: stretch;
+          padding: 14px 14px 14px 12px;
+          gap: 12px;
+          min-height: 110px;
+        }
+        .vbar-wrap {
+          width: 10px; flex-shrink: 0;
+          background: rgba(120,120,128,0.15);
+          border-radius: 5px;
+          position: relative; overflow: hidden;
+          align-self: stretch;
+        }
+        .vbar-fill {
+          position: absolute;
+          bottom: 0; left: 0; right: 0;
+          border-radius: 5px;
+          transition: height 0.5s cubic-bezier(.4,0,.2,1);
+        }
+
+        /* ── SIMPLE TILE (climate, odometer) ── */
+        .tile-simple { min-height: 110px; display: flex; }
+        .stat-pad { padding: 14px; }
+
+        /* ── SHARED STAT CONTENT ── */
+        .stat-content {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+        }
+        .stat-lbl {
+          font-size: 10px; font-weight: 600;
+          text-transform: uppercase; letter-spacing: 0.6px;
+          color: var(--secondary-text-color, #8e8e93);
+        }
+        .stat-num {
+          font-size: 36px; font-weight: 800;
+          letter-spacing: -1.5px; line-height: 1;
+        }
+        .stat-num-sm {
+          font-size: 24px; font-weight: 800;
+          letter-spacing: -1px; line-height: 1;
+        }
+        .stat-unit {
+          font-size: 11px;
+          color: var(--secondary-text-color, #8e8e93);
+          margin-top: 1px;
+        }
+        .stat-sub {
+          display: inline-block;
+          font-size: 11px;
+          color: var(--secondary-text-color, #8e8e93);
+          margin-top: 4px;
+          border-radius: 4px;
+          padding: 1px 3px;
+          cursor: pointer;
+          transition: background 0.15s;
+        }
+        .stat-sub:hover { background: rgba(120,120,128,0.1); }
+
+        /* ── CLIMATE PILL ── */
+        .climate-pill {
+          display: inline-flex; align-items: center; gap: 6px;
+          border-radius: 20px; padding: 5px 10px;
+          font-size: 13px; font-weight: 700; letter-spacing: 0.3px;
+          cursor: pointer; transition: opacity 0.15s;
+          border: 1px solid transparent;
+        }
+        .climate-pill:hover  { opacity: 0.75; }
+        .climate-pill:active { opacity: 0.5; }
+        .climate-pill.on  {
+          background: rgba(52,199,89,0.12); color: #34c759;
+          border-color: rgba(52,199,89,0.25);
+        }
+        .climate-pill.off {
+          background: var(--secondary-background-color, rgba(120,120,128,0.08));
+          color: var(--secondary-text-color, #8e8e93);
+          border-color: var(--divider-color, rgba(128,128,128,0.12));
+        }
+        .climate-dot {
+          width: 6px; height: 6px;
+          border-radius: 50%;
+          background: currentColor;
+          flex-shrink: 0;
+        }
+
+        /* ── EMPTY STATE ── */
+        .empty-state {
+          text-align: center;
+          padding: 24px 20px;
+          color: var(--secondary-text-color, #8e8e93);
+          font-size: 13px;
+        }
+      </style>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="header-title">
+            <div class="header-title-icon">🚗</div>
+            <div class="header-title-text">${c.name || 'Fahrzeug'}</div>
           </div>
-        </ha-card>`;
-      return;
-    }
-
-    const topRows    = [this._renderBattery(), this._renderFuel(), this._renderClimate()].filter(Boolean);
-    const bottomRows = [this._renderOdometer()].filter(Boolean);
-
-    const topHtml    = topRows.join('');
-    const bottomHtml = bottomRows.length ? `<hr class="vc-divider">${bottomRows.join('')}` : '';
-
-    this.innerHTML = `
-    <ha-card>
-      ${this._getStyles()}
-      <div class="vc-card">
-        ${this._renderHeader()}
-        <div class="vc-body">
-          ${topHtml}
-          ${bottomHtml}
+          ${badge}
         </div>
+        ${hasAnyField
+          ? `<div class="card-grid">${tiles}</div>`
+          : '<div class="empty-state">Keine Entitäten konfiguriert</div>'
+        }
       </div>
-    </ha-card>`;
+    `;
 
     this._attachListeners();
+  }
+
+  _attachListeners() {
+    // charge badge
+    this.shadowRoot.querySelectorAll('.header-badge[data-entity]').forEach(el => {
+      el.addEventListener('click', e => {
+        e.stopPropagation();
+        this._moreInfo(el.dataset.entity);
+      });
+    });
+
+    // tiles → more-info (skip clicks on data-toggle pill or stat-sub)
+    this.shadowRoot.querySelectorAll('.tile[data-entity]').forEach(el => {
+      el.addEventListener('click', e => {
+        if (e.target.closest('[data-toggle]') || e.target.closest('.stat-sub[data-entity]')) return;
+        this._moreInfo(el.dataset.entity);
+      });
+    });
+
+    // range sub-label → more-info on range entity
+    this.shadowRoot.querySelectorAll('.stat-sub[data-entity]').forEach(el => {
+      el.addEventListener('click', e => {
+        e.stopPropagation();
+        this._moreInfo(el.dataset.entity);
+      });
+    });
+
+    // climate toggle pill
+    this.shadowRoot.querySelectorAll('[data-toggle]').forEach(el => {
+      el.addEventListener('click', e => {
+        e.stopPropagation();
+        this._hass.callService('homeassistant', 'toggle', { entity_id: el.dataset.toggle });
+      });
+    });
   }
 }
 customElements.define('vehicle-card', VehicleCard);
@@ -327,3 +493,5 @@ window.customCards.push({
   description: 'Fahrzeugstatus Card für Home Assistant',
   preview: false,
 });
+
+console.info(`%c VEHICLE-CARD %c v${CARD_VERSION} `, 'background:#007aff;color:#fff;font-weight:700;', 'background:#1c1c1e;color:#007aff;font-weight:700;');

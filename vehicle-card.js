@@ -1,4 +1,4 @@
-const CARD_VERSION = "1.0.4";
+const CARD_VERSION = "1.0.5";
 
 // ─── Editor Schema ────────────────────────────────────────────────────────────
 const EDITOR_SCHEMA = [
@@ -133,7 +133,7 @@ class VehicleCard extends HTMLElement {
     }));
   }
 
-  _chargeBadgeHtml() {
+  _chargeStatusBadge(inTile = false) {
     const c = this._config, hass = this._hass;
     if (!c.charge_status) return '';
     const entity = _getState(hass, c.charge_status);
@@ -154,7 +154,24 @@ class VehicleCard extends HTMLElement {
         text = raw; cls = 'badge-default';
       }
     }
-    return `<div class="header-badge ${cls}" data-entity="${c.charge_status}">${text}</div>`;
+    const el = inTile ? 'charge-tile-badge' : 'header-badge';
+    return `<div class="${el} ${cls}" data-entity="${c.charge_status}">${text}</div>`;
+  }
+
+  _odometerPillHtml() {
+    const c = this._config, hass = this._hass;
+    if (!c.odometer) return '';
+    const val  = _stateVal(hass, c.odometer);
+    const unit = _getState(hass, c.odometer)?.attributes?.unit_of_measurement || 'km';
+    const num  = parseFloat(val);
+    const valid = val !== null && val !== '—' && val !== '?';
+    const disp  = !valid ? (val || '—') : isNaN(num) ? val : num.toLocaleString('de-DE');
+    return `
+      <div class="header-pill clickable" data-entity="${c.odometer}">
+        <span class="pill-icon">📍</span>
+        <span class="pill-num">${disp}</span>
+        <span class="pill-unit">${unit}</span>
+      </div>`;
   }
 
   _batteryTileHtml() {
@@ -175,6 +192,8 @@ class VehicleCard extends HTMLElement {
       rangeHtml = `<div class="stat-sub" data-entity="${c.battery_range}">${rv ? range + '\u202f' + rangeUnit : (range || '—')}</div>`;
     }
 
+    const chargeBadge = this._chargeStatusBadge(true);
+
     return `
       <div class="tile tile-vbar clickable" data-entity="${c.battery_level}">
         <div class="vbar-wrap">
@@ -186,6 +205,7 @@ class VehicleCard extends HTMLElement {
             <div class="stat-num" style="color:${color}">${numStr}</div>
             <div class="stat-unit">%</div>
             ${rangeHtml}
+            ${chargeBadge}
           </div>
         </div>
       </div>`;
@@ -261,7 +281,7 @@ class VehicleCard extends HTMLElement {
     const hasAnyField = ['battery_level','battery_range','charge_status','fuel_level',
       'odometer','climate'].some(k => c[k]);
 
-    const badge   = this._chargeBadgeHtml();
+    const badge   = this._odometerPillHtml();
     const battery = this._batteryTileHtml();
     const fuel    = this._fuelTileHtml();
     const climate = this._climateTileHtml();
@@ -299,19 +319,33 @@ class VehicleCard extends HTMLElement {
         }
         .header-title-text { font-size: 15px; font-weight: 600; letter-spacing: -0.2px; }
 
-        .header-badge {
-          display: flex; align-items: center;
+        /* header odometer pill */
+        .header-pill {
+          display: flex; align-items: center; gap: 5px;
+          background: var(--secondary-background-color, #f2f2f7);
           border-radius: 10px; padding: 5px 9px;
-          font-size: 12px; font-weight: 600; letter-spacing: 0.2px;
-          cursor: pointer;
+          cursor: pointer; transition: opacity 0.15s;
+        }
+        .header-pill:hover  { opacity: 0.7; }
+        .header-pill:active { opacity: 0.5; }
+        .pill-icon { font-size: 11px; }
+        .pill-num  { font-size: 13px; font-weight: 700; letter-spacing: -0.2px; }
+        .pill-unit { font-size: 10px; color: var(--secondary-text-color, #8e8e93); }
+
+        /* charge status badge inside battery tile */
+        .charge-tile-badge {
+          display: inline-flex; align-items: center;
+          border-radius: 8px; padding: 3px 7px;
+          font-size: 10px; font-weight: 600; letter-spacing: 0.3px;
+          margin-top: 5px; cursor: pointer;
           transition: opacity 0.15s;
         }
-        .header-badge:hover  { opacity: 0.7; }
-        .header-badge:active { opacity: 0.5; }
+        .charge-tile-badge:hover  { opacity: 0.75; }
+        .charge-tile-badge:active { opacity: 0.5; }
         .badge-charging { background: rgba(52,199,89,0.12); color: #34c759; }
         .badge-plugged  { background: rgba(52,199,89,0.08); color: #34c759; }
         .badge-default  {
-          background: var(--secondary-background-color, #f2f2f7);
+          background: rgba(120,120,128,0.12);
           color: var(--secondary-text-color, #8e8e93);
         }
 
@@ -451,18 +485,18 @@ class VehicleCard extends HTMLElement {
   }
 
   _attachListeners() {
-    // charge badge
-    this.shadowRoot.querySelectorAll('.header-badge[data-entity]').forEach(el => {
+    // odometer header pill + charge tile badge → more-info
+    this.shadowRoot.querySelectorAll('.header-pill[data-entity], .charge-tile-badge[data-entity]').forEach(el => {
       el.addEventListener('click', e => {
         e.stopPropagation();
         this._moreInfo(el.dataset.entity);
       });
     });
 
-    // tiles → more-info (skip clicks on data-toggle pill or stat-sub)
+    // tiles → more-info (skip clicks on data-toggle pill, stat-sub, or charge-tile-badge)
     this.shadowRoot.querySelectorAll('.tile[data-entity]').forEach(el => {
       el.addEventListener('click', e => {
-        if (e.target.closest('[data-toggle]') || e.target.closest('.stat-sub[data-entity]')) return;
+        if (e.target.closest('[data-toggle]') || e.target.closest('.stat-sub[data-entity]') || e.target.closest('.charge-tile-badge')) return;
         this._moreInfo(el.dataset.entity);
       });
     });

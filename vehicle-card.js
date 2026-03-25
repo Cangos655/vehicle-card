@@ -184,6 +184,20 @@ class VehicleCard extends HTMLElement {
     </div>`;
 }
 
+  _renderClimate() {
+  const cfg = this._config;
+  if (!cfg.climate) return '';
+  const entity = _getState(this._hass, cfg.climate);
+  const isOn = entity?.state === 'on';
+  const statusText = isOn ? 'AN' : 'AUS';
+  const statusCls  = isOn ? 'on' : 'off';
+  return `
+    <div class="vc-toggle-row">
+      <span class="vc-toggle-label" data-entity="${cfg.climate}">❄️ Klimaanlage</span>
+      <span class="vc-toggle-status ${statusCls}" data-toggle="${cfg.climate}">${statusText}</span>
+    </div>`;
+}
+
   _attachListeners() {
     this.querySelectorAll('[data-entity]').forEach(el => {
       el.addEventListener('click', (e) => {
@@ -195,6 +209,13 @@ class VehicleCard extends HTMLElement {
           bubbles: true,
           composed: true,
         }));
+      });
+    });
+    this.querySelectorAll('[data-toggle]').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const entityId = el.dataset.toggle;
+        this._hass.callService('homeassistant', 'toggle', { entity_id: entityId });
       });
     });
   }

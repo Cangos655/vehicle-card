@@ -6,6 +6,38 @@ function discoverVehicleEntities(hass) {
   return {};
 }
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+function _getState(hass, entityId) {
+  if (!entityId || !hass.states[entityId]) return null;
+  return hass.states[entityId];
+}
+
+function _stateVal(hass, entityId) {
+  const s = _getState(hass, entityId);
+  if (!s) return null;
+  if (s.state === 'unavailable') return '—';
+  if (s.state === 'unknown') return '?';
+  return s.state;
+}
+
+function _batteryColor(pct) {
+  if (pct === null || pct === '—' || pct === '?') return '';
+  const n = parseFloat(pct);
+  if (isNaN(n)) return '';
+  if (n < 20) return 'red';
+  if (n < 50) return 'orange';
+  return 'green';
+}
+
+function _fuelColor(pct) {
+  if (pct === null || pct === '—' || pct === '?') return '';
+  const n = parseFloat(pct);
+  if (isNaN(n)) return '';
+  if (n < 15) return 'red';
+  if (n < 30) return 'orange';
+  return '';
+}
+
 // ─── Editor ──────────────────────────────────────────────────────────────────
 class VehicleCardEditor extends HTMLElement {
   setConfig(config) { this._config = config; }

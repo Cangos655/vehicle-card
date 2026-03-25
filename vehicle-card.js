@@ -136,6 +136,40 @@ class VehicleCard extends HTMLElement {
       </div>`;
   }
 
+  _renderBattery() {
+  const cfg = this._config;
+  const hass = this._hass;
+  if (!cfg.battery_level && !cfg.battery_range) return '';
+
+  const pct   = _stateVal(hass, cfg.battery_level);
+  const range = _stateVal(hass, cfg.battery_range);
+  const color = _batteryColor(pct);
+  const numPct = parseFloat(pct) || 0;
+  const barWidth = (pct === '—' || pct === '?' || pct === null) ? 0 : Math.min(100, Math.max(0, numPct));
+
+  const barColorMap = { red: '#ef5350', orange: '#ffa726', green: '#66bb6a' };
+  const barColor = barColorMap[color] || '#90a4ae';
+
+  let html = '<div class="vc-row">';
+
+  if (cfg.battery_level) {
+    html += `
+      <span class="vc-label">🔋 Akku</span>
+      <div class="vc-bar-wrap" data-entity="${cfg.battery_level}">
+        <div class="vc-bar" style="width:${barWidth}%;background:${barColor}"></div>
+      </div>
+      <span class="vc-value ${color}" data-entity="${cfg.battery_level}">${pct !== null ? pct + '%' : '—'}</span>`;
+  }
+
+  if (cfg.battery_range) {
+    const rangeUnit = _getState(hass, cfg.battery_range)?.attributes?.unit_of_measurement || 'km';
+    html += `<span class="vc-value" style="margin-left:auto" data-entity="${cfg.battery_range}">${range !== null ? range + ' ' + rangeUnit : '—'}</span>`;
+  }
+
+  html += '</div>';
+  return html;
+}
+
   _attachListeners() {
     this.querySelectorAll('[data-entity]').forEach(el => {
       el.addEventListener('click', (e) => {

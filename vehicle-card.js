@@ -1,4 +1,4 @@
-const CARD_VERSION = "1.0.2";
+const CARD_VERSION = "1.0.3";
 
 // ─── Editor Schema ────────────────────────────────────────────────────────────
 const EDITOR_SCHEMA = [
@@ -9,10 +9,6 @@ const EDITOR_SCHEMA = [
   { name: 'fuel_level',    label: '⛽ Tankstand (Sensor %)',       selector: { entity: {} } },
   { name: 'odometer',      label: '📍 Kilometerstand (Sensor)',    selector: { entity: {} } },
   { name: 'climate',       label: '❄️ Klimaanlage (Switch)',       selector: { entity: { domain: 'switch' } } },
-  { name: 'door_1',        label: '🚪 Tür / Fenster 1',           selector: { entity: { domain: 'binary_sensor' } } },
-  { name: 'door_2',        label: '🚪 Tür / Fenster 2',           selector: { entity: { domain: 'binary_sensor' } } },
-  { name: 'door_3',        label: '🚪 Tür / Fenster 3',           selector: { entity: { domain: 'binary_sensor' } } },
-  { name: 'door_4',        label: '🚪 Tür / Fenster 4',           selector: { entity: { domain: 'binary_sensor' } } },
 ];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -63,15 +59,7 @@ class VehicleCardEditor extends HTMLElement {
   }
 
   setConfig(config) {
-    // Migrate legacy 'doors' array → door_1..door_4
-    if (Array.isArray(config.doors)) {
-      const migrated = { ...config };
-      config.doors.slice(0, 4).forEach((id, i) => { migrated[`door_${i + 1}`] = id; });
-      delete migrated.doors;
-      this._config = migrated;
-    } else {
-      this._config = config || {};
-    }
+    this._config = config || {};
     if (this._form) this._form.data = this._config;
     if (!this._initialized) this._initialize();
   }
@@ -110,15 +98,7 @@ class VehicleCard extends HTMLElement {
     return {};
   }
   setConfig(config) {
-    // Migrate legacy 'doors' array → door_1..door_4
-    if (Array.isArray(config.doors)) {
-      const migrated = { ...config };
-      config.doors.slice(0, 4).forEach((id, i) => { migrated[`door_${i + 1}`] = id; });
-      delete migrated.doors;
-      this._config = migrated;
-    } else {
-      this._config = config;
-    }
+    this._config = config;
   }
   getCardSize() { return 3; }
   set hass(hass) {
@@ -259,37 +239,6 @@ class VehicleCard extends HTMLElement {
     </div>`;
 }
 
-  _renderDoors() {
-  const cfg = this._config;
-  const allDoors = [cfg.door_1, cfg.door_2, cfg.door_3, cfg.door_4].filter(Boolean);
-  if (allDoors.length === 0) return '';
-
-  const available = allDoors.filter(id => {
-    const s = _getState(this._hass, id);
-    return s && s.state !== 'unavailable' && s.state !== 'unknown';
-  });
-
-  if (available.length === 0) {
-    return `<div class="vc-row no-click"><span class="vc-label">🚪 Türen</span><span class="vc-value">—</span></div>`;
-  }
-
-  const openDoors = available.filter(id => {
-    const st = this._hass.states[id].state;
-    return st === 'on' || st === 'open';
-  });
-  const openCount  = openDoors.length;
-  const clickTarget = openCount > 0 ? openDoors[0] : allDoors[0];
-
-  const color = openCount > 0 ? 'red' : 'green';
-  const text  = openCount > 0 ? `${openCount} offen` : 'alle zu';
-
-  return `
-    <div class="vc-row" data-entity="${clickTarget}">
-      <span class="vc-label">🚪 Türen</span>
-      <span class="vc-value ${color}">${text}</span>
-    </div>`;
-}
-
   _renderOdometer() {
   const cfg = this._config;
   if (!cfg.odometer) return '';
@@ -332,7 +281,7 @@ class VehicleCard extends HTMLElement {
     if (!this._config || !this._hass) return;
 
     const hasAnyField = ['battery_level','battery_range','charge_status','fuel_level',
-      'door_1','door_2','door_3','door_4','odometer','climate'].some(k => this._config[k]);
+      'odometer','climate'].some(k => this._config[k]);
 
     if (!hasAnyField) {
       this.innerHTML = `
@@ -349,7 +298,7 @@ class VehicleCard extends HTMLElement {
     }
 
     const topRows    = [this._renderBattery(), this._renderFuel(), this._renderClimate()].filter(Boolean);
-    const bottomRows = [this._renderDoors(), this._renderOdometer()].filter(Boolean);
+    const bottomRows = [this._renderOdometer()].filter(Boolean);
 
     const topHtml    = topRows.join('');
     const bottomHtml = bottomRows.length ? `<hr class="vc-divider">${bottomRows.join('')}` : '';

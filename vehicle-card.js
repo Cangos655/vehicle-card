@@ -170,6 +170,20 @@ class VehicleCard extends HTMLElement {
   return html;
 }
 
+  _renderFuel() {
+  const cfg = this._config;
+  if (!cfg.fuel_level) return '';
+  const val = _stateVal(this._hass, cfg.fuel_level);
+  const color = _fuelColor(val);
+  const unit = _getState(this._hass, cfg.fuel_level)?.attributes?.unit_of_measurement || '%';
+  const display = val !== null ? val + unit : '—';
+  return `
+    <div class="vc-row" data-entity="${cfg.fuel_level}">
+      <span class="vc-label">⛽ Tank</span>
+      <span class="vc-value ${color}">${display}</span>
+    </div>`;
+}
+
   _attachListeners() {
     this.querySelectorAll('[data-entity]').forEach(el => {
       el.addEventListener('click', (e) => {

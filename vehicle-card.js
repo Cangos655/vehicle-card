@@ -16,10 +16,12 @@ function discoverVehicleEntities(hass) {
   const ids = Object.keys(hass.states);
 
   for (const [field, keywords] of Object.entries(patterns)) {
-    const matches = ids.filter(id =>
+    let matches = ids.filter(id =>
       keywords.some(kw => id.toLowerCase().includes(kw))
     );
     if (field === 'doors') {
+      // Only binary_sensors make sense as door/window sensors
+      matches = matches.filter(id => id.startsWith('binary_sensor.'));
       if (matches.length) result.doors = matches;
     } else {
       if (matches.length) result[field] = matches[0];
@@ -103,22 +105,18 @@ class VehicleCardEditor extends HTMLElement {
         .vc-add-btn { cursor: pointer; color: var(--primary-color); font-size: 0.85em; padding: 4px; }
       </style>
       <div class="vc-editor">
-        <ha-textfield label="Name (optional, z.B. Mein Auto)" .value="${cfg.name || ''}" data-field="name"></ha-textfield>
+        <ha-textfield label="Name (optional, z.B. Mein Auto)" data-field="name"></ha-textfield>
         ${singleFields.map(f => `
           <div>
             <label>${f.label}</label>
-            <ha-entity-picker
-              .value="${cfg[f.key] || ''}"
-              data-field="${f.key}"
-              allow-custom-entity>
-            </ha-entity-picker>
+            <ha-entity-picker data-field="${f.key}" allow-custom-entity></ha-entity-picker>
           </div>`).join('')}
         <div>
           <label>🚪 Türen / Fenster (mehrere möglich)</label>
           <div id="doors-list">
             ${doorsList.map((id, i) => `
               <div class="vc-door-row" data-door-index="${i}">
-                <ha-entity-picker .value="${id}" data-field="door-${i}" allow-custom-entity></ha-entity-picker>
+                <ha-entity-picker data-field="door-${i}" allow-custom-entity></ha-entity-picker>
                 <span class="vc-remove-btn" data-remove-door="${i}">✕</span>
               </div>`).join('')}
           </div>
@@ -126,9 +124,19 @@ class VehicleCardEditor extends HTMLElement {
         </div>
       </div>`;
 
-    // Wire up pickers and textfield
+    // Wire up pickers and textfield — set properties AFTER DOM creation
     this.querySelectorAll('ha-entity-picker, ha-textfield').forEach(el => {
       el.hass = this._hass;
+      // Set value as JS property (not HTML attribute)
+      const field = el.dataset.field;
+      if (field === 'name') {
+        el.value = cfg.name || '';
+      } else if (field && field.startsWith('door-')) {
+        const idx = parseInt(field.split('-')[1]);
+        el.value = (cfg.doors || [])[idx] || '';
+      } else if (field) {
+        el.value = cfg[field] || '';
+      }
       el.addEventListener('value-changed', (e) => {
         const field = el.dataset.field;
         if (!field) return;

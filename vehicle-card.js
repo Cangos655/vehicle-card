@@ -265,13 +265,25 @@ class VehicleCard extends HTMLElement {
 
   _render() {
     if (!this._config || !this._hass) return;
+
+    const topRows    = [this._renderBattery(), this._renderFuel(), this._renderClimate()].filter(Boolean);
+    const bottomRows = [this._renderDoors(), this._renderOdometer()].filter(Boolean);
+
+    const topHtml    = topRows.join('');
+    const bottomHtml = bottomRows.length ? `<hr class="vc-divider">${bottomRows.join('')}` : '';
+
     this.innerHTML = `
-      <ha-card>
-        ${this._getStyles()}
-        <div class="vc-card">
-          ${this._renderHeader()}
+    <ha-card>
+      ${this._getStyles()}
+      <div class="vc-card">
+        ${this._renderHeader()}
+        <div class="vc-body">
+          ${topHtml}
+          ${bottomHtml}
         </div>
-      </ha-card>`;
+      </div>
+    </ha-card>`;
+
     this._attachListeners();
   }
 }

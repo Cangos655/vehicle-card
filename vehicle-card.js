@@ -63,8 +63,117 @@ function _fuelColor(pct) {
 
 // ─── Editor ──────────────────────────────────────────────────────────────────
 class VehicleCardEditor extends HTMLElement {
-  setConfig(config) { this._config = config; }
-  connectedCallback() { this.innerHTML = '<p>Editor loading...</p>'; }
+  setConfig(config) {
+    this._config = { ...config };
+    if (this._hass) this._render();
+  }
+
+  set hass(hass) {
+    this._hass = hass;
+    // Auto-discover on first open if config is empty
+    if (this._config && !this._config._discovered) {
+      const discovered = discoverVehicleEntities(hass);
+      if (Object.keys(discovered).length > 0) {
+        this._config = { ...this._config, ...discovered, _discovered: true };
+      }
+    }
+    this._render();
+  }
+
+  _render() {
+    if (!this._hass || !this._config) return;
+    const cfg = this._config;
+
+    const singleFields = [
+      { key: 'battery_level', label: '🔋 Akkustand (Sensor %)' },
+      { key: 'battery_range', label: '📏 Reichweite (Sensor km)' },
+      { key: 'charge_status', label: '⚡ Ladestatus (Sensor/Binary)' },
+      { key: 'fuel_level',    label: '⛽ Tankstand (Sensor %)' },
+      { key: 'odometer',      label: '📍 Kilometerstand (Sensor)' },
+      { key: 'climate',       label: '❄️ Klimaanlage (Switch)' },
+    ];
+
+    const doorsList = Array.isArray(cfg.doors) ? cfg.doors : [];
+
+    this.innerHTML = `
+      <style>
+        .vc-editor { padding: 8px; display: flex; flex-direction: column; gap: 10px; }
+        .vc-editor label { font-size: 0.85em; color: var(--secondary-text-color); display: block; margin-bottom: 2px; }
+        .vc-door-row { display: flex; align-items: center; gap: 6px; }
+        .vc-door-row ha-entity-picker { flex: 1; }
+        .vc-remove-btn { cursor: pointer; color: var(--error-color); font-size: 1.1em; padding: 0 4px; }
+        .vc-add-btn { cursor: pointer; color: var(--primary-color); font-size: 0.85em; padding: 4px; }
+      </style>
+      <div class="vc-editor">
+        <ha-textfield label="Name (optional, z.B. Mein Auto)" .value="${cfg.name || ''}" data-field="name"></ha-textfield>
+        ${singleFields.map(f => `
+          <div>
+            <label>${f.label}</label>
+            <ha-entity-picker
+              .value="${cfg[f.key] || ''}"
+              data-field="${f.key}"
+              allow-custom-entity>
+            </ha-entity-picker>
+          </div>`).join('')}
+        <div>
+          <label>🚪 Türen / Fenster (mehrere möglich)</label>
+          <div id="doors-list">
+            ${doorsList.map((id, i) => `
+              <div class="vc-door-row" data-door-index="${i}">
+                <ha-entity-picker .value="${id}" data-field="door-${i}" allow-custom-entity></ha-entity-picker>
+                <span class="vc-remove-btn" data-remove-door="${i}">✕</span>
+              </div>`).join('')}
+          </div>
+          <div class="vc-add-btn" id="add-door">+ Tür hinzufügen</div>
+        </div>
+      </div>`;
+
+    // Wire up pickers and textfield
+    this.querySelectorAll('ha-entity-picker, ha-textfield').forEach(el => {
+      el.hass = this._hass;
+      el.addEventListener('value-changed', (e) => {
+        const field = el.dataset.field;
+        if (!field) return;
+        const val = e.detail.value;
+        if (field === 'name') {
+          this._config = { ...this._config, name: val };
+        } else if (field.startsWith('door-')) {
+          const idx = parseInt(field.split('-')[1]);
+          const doors = [...(this._config.doors || [])];
+          doors[idx] = val;
+          this._config = { ...this._config, doors };
+        } else {
+          this._config = { ...this._config, [field]: val };
+        }
+        this._fireChange();
+      });
+    });
+
+    // Add door
+    this.querySelector('#add-door')?.addEventListener('click', () => {
+      const doors = [...(this._config.doors || []), ''];
+      this._config = { ...this._config, doors };
+      this._render();
+    });
+
+    // Remove door
+    this.querySelectorAll('[data-remove-door]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = parseInt(btn.dataset.removeDoor);
+        const doors = (this._config.doors || []).filter((_, i) => i !== idx);
+        this._config = { ...this._config, doors };
+        this._render();
+        this._fireChange();
+      });
+    });
+  }
+
+  _fireChange() {
+    const cfg = { ...this._config };
+    delete cfg._discovered;
+    if (cfg.doors && cfg.doors.length === 0) delete cfg.doors;
+    this.dispatchEvent(new CustomEvent('config-changed', { detail: { config: cfg }, bubbles: true, composed: true }));
+  }
 }
 customElements.define('vehicle-card-editor', VehicleCardEditor);
 

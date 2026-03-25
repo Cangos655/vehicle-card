@@ -225,6 +225,22 @@ class VehicleCard extends HTMLElement {
     </div>`;
 }
 
+  _renderOdometer() {
+  const cfg = this._config;
+  if (!cfg.odometer) return '';
+  const val = _stateVal(this._hass, cfg.odometer);
+  const unit = _getState(this._hass, cfg.odometer)?.attributes?.unit_of_measurement || 'km';
+  const num = parseFloat(val);
+  const display = val === '—' || val === '?' || val === null
+    ? val || '—'
+    : isNaN(num) ? val : num.toLocaleString('de-DE') + ' ' + unit;
+  return `
+    <div class="vc-row" data-entity="${cfg.odometer}">
+      <span class="vc-label">📍 km-Stand</span>
+      <span class="vc-value">${display}</span>
+    </div>`;
+}
+
   _attachListeners() {
     this.querySelectorAll('[data-entity]').forEach(el => {
       el.addEventListener('click', (e) => {

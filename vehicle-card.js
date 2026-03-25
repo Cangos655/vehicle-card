@@ -73,9 +73,7 @@ class VehicleCardEditor extends HTMLElement {
     // Auto-discover on first open if config is empty
     if (this._config && !this._config._discovered) {
       const discovered = discoverVehicleEntities(hass);
-      if (Object.keys(discovered).length > 0) {
-        this._config = { ...this._config, ...discovered, _discovered: true };
-      }
+      this._config = { ...this._config, ...discovered, _discovered: true };
     }
     this._render();
   }

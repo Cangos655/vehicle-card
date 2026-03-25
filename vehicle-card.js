@@ -341,7 +341,10 @@ class VehicleCard extends HTMLElement {
     return `<div class="vc-row no-click"><span class="vc-label">🚪 Türen</span><span class="vc-value">—</span></div>`;
   }
 
-  const openDoors = available.filter(id => this._hass.states[id].state === 'on');
+  const openDoors = available.filter(id => {
+    const st = this._hass.states[id].state;
+    return st === 'on' || st === 'open';
+  });
   const openCount = openDoors.length;
   const clickTarget = openCount > 0 ? openDoors[0] : cfg.doors[0];
 

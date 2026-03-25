@@ -21,14 +21,23 @@ All fields are optional — unconfigured fields are simply hidden.
 
 ## Installation
 
-### Manual
+### HACS (empfohlen)
 
-1. Download `vehicle-card.js` from the [latest release](https://github.com/Cangos655/vehicle-card/releases/latest)
-2. Copy it to your HA `config/www/` folder
-3. Add it as a Lovelace resource:
+1. HACS öffnen → **Frontend**
+2. Drei-Punkte-Menü → **Custom repositories**
+3. URL eingeben: `https://github.com/Cangos655/vehicle-card`
+4. Kategorie: **Lovelace** → **Add**
+5. **Vehicle Card** in der Liste suchen und **Download** klicken
+6. Browser neu laden (Strg+Shift+R)
+
+### Manuell
+
+1. `vehicle-card.js` aus dem [neuesten Release](https://github.com/Cangos655/vehicle-card/releases/latest) herunterladen
+2. In den HA-Ordner `config/www/` kopieren
+3. Als Lovelace-Ressource hinzufügen:
    - **URL:** `/local/vehicle-card.js`
-   - **Type:** JavaScript module
-4. Reload your browser (Ctrl+Shift+R)
+   - **Typ:** JavaScript-Modul
+4. Browser neu laden (Strg+Shift+R)
 
 ## Configuration
 

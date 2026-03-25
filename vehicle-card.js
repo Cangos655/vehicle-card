@@ -266,6 +266,23 @@ class VehicleCard extends HTMLElement {
   _render() {
     if (!this._config || !this._hass) return;
 
+    const hasAnyField = ['battery_level','battery_range','charge_status','fuel_level',
+      'doors','odometer','climate'].some(k => this._config[k]);
+
+    if (!hasAnyField) {
+      this.innerHTML = `
+        <ha-card>
+          ${this._getStyles()}
+          <div class="vc-card">
+            <div class="vc-header"><span class="vc-name">🚗 ${this._config.name || 'Fahrzeug'}</span></div>
+            <p style="color:var(--secondary-text-color);font-size:0.85em;padding:8px 6px">
+              Keine Entitäten konfiguriert
+            </p>
+          </div>
+        </ha-card>`;
+      return;
+    }
+
     const topRows    = [this._renderBattery(), this._renderFuel(), this._renderClimate()].filter(Boolean);
     const bottomRows = [this._renderDoors(), this._renderOdometer()].filter(Boolean);
 

@@ -1,4 +1,4 @@
-const CARD_VERSION = "1.0.8";
+const CARD_VERSION = "1.0.9";
 
 // ─── Editor Schema ────────────────────────────────────────────────────────────
 const EDITOR_SCHEMA = [
@@ -276,11 +276,10 @@ class VehicleCard extends HTMLElement {
     const hasAnyField = ['battery_level','battery_range','charge_status','fuel_level',
       'odometer','climate'].some(k => c[k]);
 
-    const badge    = this._odometerPillHtml();
-    const battery  = this._batteryTileHtml();
-    const fuel     = this._fuelTileHtml();
-    const odometer = this._odometerTileHtml();
-    const tiles    = [battery, fuel, odometer].filter(Boolean).join('');
+    const badge   = this._odometerPillHtml();
+    const battery = this._batteryTileHtml();
+    const fuel    = this._fuelTileHtml();
+    const tiles   = [battery, fuel].filter(Boolean).join('');
 
     this.shadowRoot.innerHTML = `
       <style>

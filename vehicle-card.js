@@ -1,4 +1,4 @@
-const CARD_VERSION = "1.0.10";
+const CARD_VERSION = "1.0.11";
 
 // ─── Editor Schema ────────────────────────────────────────────────────────────
 const EDITOR_SCHEMA = [
@@ -251,6 +251,25 @@ class VehicleCard extends HTMLElement {
       </div>`;
   }
 
+  _climateTileHtml() {
+    const c = this._config, hass = this._hass;
+    if (!c.climate) return '';
+    const entity = _getState(hass, c.climate);
+    const isOn   = entity?.state === 'on';
+    return `
+      <div class="tile tile-simple clickable" data-entity="${c.climate}">
+        <div class="stat-content stat-pad">
+          <div class="stat-lbl">Klimaanlage</div>
+          <div class="climate-pill ${isOn ? 'on' : 'off'}" data-toggle="${c.climate}">
+            <span>❄️</span>
+            <span class="climate-lbl">Klima</span>
+            <span class="climate-dot"></span>
+            <span>${isOn ? 'AN' : 'AUS'}</span>
+          </div>
+        </div>
+      </div>`;
+  }
+
   _odometerTileHtml() {
     const c = this._config, hass = this._hass;
     if (!c.odometer) return '';
@@ -281,7 +300,8 @@ class VehicleCard extends HTMLElement {
     const badge   = this._odometerPillHtml();
     const battery = this._batteryTileHtml();
     const fuel    = this._fuelTileHtml();
-    const tiles   = [battery, fuel].filter(Boolean).join('');
+    const climate = c.climate && !c.fuel_level ? this._climateTileHtml() : '';
+    const tiles   = [battery, fuel, climate].filter(Boolean).join('');
 
     this.shadowRoot.innerHTML = `
       <style>

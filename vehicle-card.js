@@ -1,4 +1,4 @@
-const CARD_VERSION = "1.0.11";
+const CARD_VERSION = "1.1.0";
 
 // ─── Editor Schema ────────────────────────────────────────────────────────────
 const EDITOR_SCHEMA = [

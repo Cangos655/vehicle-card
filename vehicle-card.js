@@ -1,8 +1,9 @@
-const CARD_VERSION = "1.1.0";
+const CARD_VERSION = "1.1.1";
 
 // ─── Editor Schema ────────────────────────────────────────────────────────────
 const EDITOR_SCHEMA = [
   { name: 'name',          label: 'Name (optional)',               selector: { text: {} } },
+  { name: 'icon',          label: '🎨 Icon',                       selector: { icon: {} } },
   { name: 'battery_level', label: '🔋 Akkustand (Sensor %)',       selector: { entity: {} } },
   { name: 'battery_range', label: '📏 Reichweite (Sensor km)',     selector: { entity: {} } },
   { name: 'charge_status', label: '⚡ Ladestatus (Sensor/Binary)', selector: { entity: {} } },
@@ -507,7 +508,13 @@ class VehicleCard extends HTMLElement {
       <div class="card">
         <div class="card-header">
           <div class="header-title">
-            <div class="header-title-icon">🚗</div>
+            <div class="header-title-icon">${
+              c.icon
+                ? (c.icon.startsWith('mdi:')
+                    ? `<ha-icon icon="${c.icon}" style="--mdi-icon-size:16px;display:flex"></ha-icon>`
+                    : c.icon)
+                : '🚗'
+            }</div>
             <div class="header-title-text">${c.name || 'Fahrzeug'}</div>
           </div>
           ${badge}

@@ -1,4 +1,4 @@
-const CARD_VERSION = "1.0.9";
+const CARD_VERSION = "1.0.10";
 
 // ─── Editor Schema ────────────────────────────────────────────────────────────
 const EDITOR_SCHEMA = [
@@ -229,6 +229,8 @@ class VehicleCard extends HTMLElement {
       const isOn   = entity?.state === 'on';
       climateHtml = `
         <div class="climate-pill ${isOn ? 'on' : 'off'}" data-toggle="${c.climate}">
+          <span>❄️</span>
+          <span class="climate-lbl">Klima</span>
           <span class="climate-dot"></span>
           <span>${isOn ? 'AN' : 'AUS'}</span>
         </div>`;
@@ -461,11 +463,16 @@ class VehicleCard extends HTMLElement {
           color: var(--secondary-text-color, #8e8e93);
           border-color: var(--divider-color, rgba(128,128,128,0.12));
         }
+        .climate-lbl {
+          font-size: 12px; font-weight: 600;
+          margin-right: 2px;
+        }
         .climate-dot {
-          width: 6px; height: 6px;
+          width: 5px; height: 5px;
           border-radius: 50%;
           background: currentColor;
           flex-shrink: 0;
+          opacity: 0.7;
         }
 
         /* ── EMPTY STATE ── */

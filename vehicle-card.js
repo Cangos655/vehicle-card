@@ -1,4 +1,4 @@
-const CARD_VERSION = "1.0.5";
+const CARD_VERSION = "1.0.6";
 
 // ─── Editor Schema ────────────────────────────────────────────────────────────
 const EDITOR_SCHEMA = [
@@ -202,8 +202,9 @@ class VehicleCard extends HTMLElement {
         <div class="stat-content">
           <div class="stat-lbl">Akku</div>
           <div>
-            <div class="stat-num" style="color:${color}">${numStr}</div>
-            <div class="stat-unit">%</div>
+            <div class="stat-num-row">
+              <span class="stat-num" style="color:${color}">${numStr}</span><span class="stat-unit-inline" style="color:${color}">%</span>
+            </div>
             ${rangeHtml}
             ${chargeBadge}
           </div>
@@ -230,8 +231,9 @@ class VehicleCard extends HTMLElement {
         <div class="stat-content">
           <div class="stat-lbl">Tank</div>
           <div>
-            <div class="stat-num" style="color:${txtClr}">${numStr}</div>
-            <div class="stat-unit">%</div>
+            <div class="stat-num-row">
+              <span class="stat-num" style="color:${txtClr}">${numStr}</span><span class="stat-unit-inline" style="color:${txtClr}">%</span>
+            </div>
           </div>
         </div>
       </div>`;
@@ -418,6 +420,19 @@ class VehicleCard extends HTMLElement {
           font-size: 11px;
           color: var(--secondary-text-color, #8e8e93);
           margin-top: 1px;
+        }
+        .stat-num-row {
+          display: flex;
+          align-items: baseline;
+          gap: 1px;
+          line-height: 1;
+        }
+        .stat-unit-inline {
+          font-size: 18px;
+          font-weight: 700;
+          letter-spacing: -0.5px;
+          align-self: flex-end;
+          margin-bottom: 1px;
         }
         .stat-sub {
           display: inline-block;

@@ -2,20 +2,20 @@
 
 A Home Assistant Lovelace custom card for displaying vehicle status. Works with any brand — fully configurable with your own entities.
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue) ![HA](https://img.shields.io/badge/Home%20Assistant-compatible-brightgreen)
+![Version](https://img.shields.io/badge/version-1.1.1-blue) ![HA](https://img.shields.io/badge/Home%20Assistant-compatible-brightgreen)
+
+![Vehicle Card Screenshot](screenshot.jpg)
 
 ## Features
 
-- 🔋 Battery level with color-coded progress bar (green / orange / red)
-- 📏 Estimated range
-- ⚡ Charge status badge (supports `binary_sensor` and `sensor`)
-- ⛽ Fuel level with warning colors (for hybrids / combustion)
-- 🚪 Doors & windows open/closed summary
-- 📍 Odometer (formatted for German locale)
-- ❄️ Climate toggle — switchable directly from the card
-- 🎨 Dark & modern design using HA CSS variables
-- 🔍 Auto-discovery of vehicle entities
-- ⚙️ Visual editor with entity pickers and dynamic door list
+- 🔋 Battery level with color-coded vertical bar (green / yellow / red)
+- 📏 Estimated range — shown below battery percentage
+- ⚡ Charge status badge inside the battery tile (Lädt / Verbunden / Bereit)
+- ⛽ Fuel level with warning colors (for hybrids / combustion vehicles)
+- ❄️ Climate toggle — switchable directly from the card (inside fuel tile, or standalone for EVs)
+- 📍 Odometer — displayed as a pill chip in the card header
+- 🎨 Custom icon — choose any MDI icon via the visual editor
+- 🌙 Dark & modern tile-based design using HA CSS variables
 
 All fields are optional — unconfigured fields are simply hidden.
 
@@ -43,25 +43,22 @@ All fields are optional — unconfigured fields are simply hidden.
 
 ### Visual Editor
 
-The card includes a full GUI editor with entity pickers for all fields. When you add the card for the first time, it auto-discovers matching entities from your HA instance.
+The card includes a full GUI editor. All fields including the icon can be configured without YAML.
 
 ### YAML
 
 ```yaml
 type: custom:vehicle-card
 name: Mein Auto                          # optional, default: "Fahrzeug"
+icon: mdi:car-electric                   # optional, default: 🚗
 battery_level: sensor.car_battery        # optional
 battery_range: sensor.car_range          # optional
 charge_status: sensor.car_charging       # optional
 charge_state_charging: "charging"        # optional, default: "charging"
 charge_state_plugged: "plugged_in"       # optional, default: "plugged_in"
-fuel_level: sensor.car_fuel             # optional
-doors:                                   # optional, list of binary_sensors
-  - binary_sensor.car_door_front_left
-  - binary_sensor.car_door_front_right
-  - binary_sensor.car_trunk
-odometer: sensor.car_odometer           # optional
-climate: switch.car_climate             # optional
+fuel_level: sensor.car_fuel              # optional
+odometer: sensor.car_odometer            # optional
+climate: switch.car_climate              # optional
 ```
 
 ## Warning Colors
@@ -69,20 +66,24 @@ climate: switch.car_climate             # optional
 | Condition | Color |
 |---|---|
 | Battery ≥ 50% | 🟢 Green |
-| Battery 20–50% | 🟠 Orange |
+| Battery 20–50% | 🟡 Yellow |
 | Battery < 20% | 🔴 Red |
 | Fuel ≥ 30% | Default |
-| Fuel 15–30% | 🟠 Orange |
+| Fuel 15–30% | 🟡 Yellow |
 | Fuel < 15% | 🔴 Red |
-| All doors closed | 🟢 Green |
-| Any door open | 🔴 Red + count |
 
 ## Charge Status Badge
 
-The badge in the header adapts to your entity type:
+Shown inside the battery tile. Adapts to your entity type:
 
-- **`binary_sensor`**: `on` → "Lädt" (blue), `off` → "Bereit" (gray)
+- **`binary_sensor`**: `on` → "Lädt" (green), `off` → "Bereit" (gray)
 - **`sensor`**: mapped via `charge_state_charging` / `charge_state_plugged` config keys; unmapped states are shown as-is
+
+## Layout
+
+- **Pure EV** (no fuel): Battery tile + Climate tile side by side
+- **Hybrid / combustion**: Battery tile (with range + charge status) + Fuel tile (with climate toggle)
+- **Header**: Car name with custom icon + odometer pill chip
 
 ## License
 

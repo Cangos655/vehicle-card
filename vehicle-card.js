@@ -1,4 +1,4 @@
-const CARD_VERSION = "1.0.7";
+const CARD_VERSION = "1.0.8";
 
 // ─── Editor Schema ────────────────────────────────────────────────────────────
 const EDITOR_SCHEMA = [
@@ -184,16 +184,15 @@ class VehicleCard extends HTMLElement {
     const color  = _batteryColor(pct);
     const numStr = valid ? pct : (pct || '—');
 
-    let climateHtml = '';
-    if (c.climate) {
-      const entity = _getState(hass, c.climate);
-      const isOn   = entity?.state === 'on';
-      climateHtml = `
-        <div class="climate-pill ${isOn ? 'on' : 'off'}" data-toggle="${c.climate}">
-          <span class="climate-dot"></span>
-          <span>${isOn ? 'AN' : 'AUS'}</span>
-        </div>`;
+    let rangeHtml = '';
+    if (c.battery_range) {
+      const range     = _stateVal(hass, c.battery_range);
+      const rangeUnit = _getState(hass, c.battery_range)?.attributes?.unit_of_measurement || 'km';
+      const rv        = (range !== null && range !== '—' && range !== '?');
+      rangeHtml = `<div class="stat-sub" data-entity="${c.battery_range}">${rv ? range + '\u202f' + rangeUnit : (range || '—')}</div>`;
     }
+
+    const chargeBadge = this._chargeStatusBadge(true);
 
     return `
       <div class="tile tile-vbar clickable" data-entity="${c.battery_level}">
@@ -205,7 +204,10 @@ class VehicleCard extends HTMLElement {
           <div class="stat-num-row">
             <span class="stat-num" style="color:${color}">${numStr}</span><span class="stat-unit-inline" style="color:${color}">%</span>
           </div>
-          ${climateHtml}
+          <div class="tile-bottom">
+            ${rangeHtml}
+            ${chargeBadge}
+          </div>
         </div>
       </div>`;
   }
@@ -221,6 +223,17 @@ class VehicleCard extends HTMLElement {
     const txtClr = _fuelTextColor(val);
     const numStr = valid ? val : (val || '—');
 
+    let climateHtml = '';
+    if (c.climate) {
+      const entity = _getState(hass, c.climate);
+      const isOn   = entity?.state === 'on';
+      climateHtml = `
+        <div class="climate-pill ${isOn ? 'on' : 'off'}" data-toggle="${c.climate}">
+          <span class="climate-dot"></span>
+          <span>${isOn ? 'AN' : 'AUS'}</span>
+        </div>`;
+    }
+
     return `
       <div class="tile tile-vbar clickable" data-entity="${c.fuel_level}">
         <div class="vbar-wrap">
@@ -231,6 +244,7 @@ class VehicleCard extends HTMLElement {
           <div class="stat-num-row">
             <span class="stat-num" style="color:${txtClr}">${numStr}</span><span class="stat-unit-inline" style="color:${txtClr}">%</span>
           </div>
+          ${climateHtml}
         </div>
       </div>`;
   }
@@ -412,11 +426,16 @@ class VehicleCard extends HTMLElement {
           align-self: flex-end;
           margin-bottom: 1px;
         }
+        .tile-bottom {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          flex-wrap: wrap;
+        }
         .stat-sub {
           display: inline-block;
           font-size: 11px;
           color: var(--secondary-text-color, #8e8e93);
-          margin-top: 4px;
           border-radius: 4px;
           padding: 1px 3px;
           cursor: pointer;

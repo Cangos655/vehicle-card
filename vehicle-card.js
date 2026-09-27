@@ -18,8 +18,8 @@ const LABELS = {
 
 function _getLabels(hass, config) {
   const configLang = config.language && config.language !== 'auto' ? config.language : null;
-  const lang = (configLang || hass?.language || 'de').slice(0, 2);
-  const base = LABELS[lang] || LABELS.de;
+  const lang = (configLang || hass?.language || 'en').slice(0, 2);
+  const base = LABELS[lang] || LABELS.en;
   return { ...base, ...(config.labels || {}) };
 }
 

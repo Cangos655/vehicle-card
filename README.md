@@ -78,7 +78,7 @@ labels:                                  # optional, overrides individual text s
 
 ### Language & Labels
 
-- `language: auto` (default) uses Home Assistant's configured UI language. German and English are built in; any other language falls back to German.
+- `language: auto` (default) uses Home Assistant's configured UI language. German and English are built in; any other language falls back to English.
 - Set `language: de` or `language: en` to force a specific language regardless of the HA UI language.
 - Use `labels` to override any individual string, in any language — this always wins over the built-in translation, so you can mix languages or use custom wording.
 

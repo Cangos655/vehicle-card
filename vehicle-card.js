@@ -1,9 +1,37 @@
-const CARD_VERSION = "1.1.2";
+const CARD_VERSION = "1.2.0";
+
+// ─── i18n ────────────────────────────────────────────────────────────────────
+const LABELS = {
+  de: {
+    battery: 'Akku', fuel: 'Tank', climate: 'Klima', climate_tile: 'Klimaanlage',
+    odometer: 'km-Stand', on: 'AN', off: 'AUS',
+    charging: 'Lädt', plugged: 'Verbunden', ready: 'Bereit',
+    vehicle: 'Fahrzeug', empty: 'Keine Entitäten konfiguriert',
+  },
+  en: {
+    battery: 'Battery', fuel: 'Fuel', climate: 'Climate', climate_tile: 'Climate',
+    odometer: 'Odometer', on: 'ON', off: 'OFF',
+    charging: 'Charging', plugged: 'Plugged in', ready: 'Ready',
+    vehicle: 'Vehicle', empty: 'No entities configured',
+  },
+};
+
+function _getLabels(hass, config) {
+  const configLang = config.language && config.language !== 'auto' ? config.language : null;
+  const lang = (configLang || hass?.language || 'de').slice(0, 2);
+  const base = LABELS[lang] || LABELS.de;
+  return { ...base, ...(config.labels || {}) };
+}
 
 // ─── Editor Schema ────────────────────────────────────────────────────────────
 const EDITOR_SCHEMA = [
   { name: 'name',          label: 'Name (optional)',               selector: { text: {} } },
   { name: 'icon',          label: '🎨 Icon',                       selector: { icon: {} } },
+  { name: 'language',      label: '🌐 Sprache',                    selector: { select: { options: [
+    { value: 'auto', label: 'Automatisch (Home Assistant)' },
+    { value: 'de',   label: 'Deutsch' },
+    { value: 'en',   label: 'English' },
+  ] } } },
   { name: 'battery_level', label: '🔋 Akkustand (Sensor %)',       selector: { entity: {} } },
   { name: 'battery_range', label: '📏 Reichweite (Sensor km)',     selector: { entity: {} } },
   { name: 'charge_status', label: '⚡ Ladestatus (Sensor/Binary)', selector: { entity: {} } },
@@ -144,11 +172,11 @@ class VehicleCard extends HTMLElement {
       const stCharging = c.charge_state_charging || 'charging';
       const stPlugged  = c.charge_state_plugged  || 'plugged_in';
       if (raw === stCharging || raw === 'on') {
-        text = 'Lädt'; cls = 'badge-charging';
+        text = this._t.charging; cls = 'badge-charging';
       } else if (raw === stPlugged) {
-        text = 'Verbunden'; cls = 'badge-plugged';
+        text = this._t.plugged; cls = 'badge-plugged';
       } else if (raw === 'off') {
-        text = 'Bereit'; cls = 'badge-default';
+        text = this._t.ready; cls = 'badge-default';
       } else if (raw === 'unavailable') {
         text = '—'; cls = 'badge-default';
       } else {
@@ -201,7 +229,7 @@ class VehicleCard extends HTMLElement {
           <div class="vbar-fill" style="height:${barH}%;background:${color}"></div>
         </div>
         <div class="stat-content">
-          <div class="stat-lbl">Akku</div>
+          <div class="stat-lbl">${this._t.battery}</div>
           <div class="stat-num-row">
             <span class="stat-num" style="color:${color}">${numStr}</span><span class="stat-unit-inline" style="color:${color}">%</span>
           </div>
@@ -231,9 +259,9 @@ class VehicleCard extends HTMLElement {
       climateHtml = `
         <div class="climate-pill ${isOn ? 'on' : 'off'}" data-toggle="${c.climate}">
           <span>❄️</span>
-          <span class="climate-lbl">Klima</span>
+          <span class="climate-lbl">${this._t.climate}</span>
           <span class="climate-dot"></span>
-          <span>${isOn ? 'AN' : 'AUS'}</span>
+          <span>${isOn ? this._t.on : this._t.off}</span>
         </div>`;
     }
 
@@ -243,7 +271,7 @@ class VehicleCard extends HTMLElement {
           <div class="vbar-fill" style="height:${barH}%;background:${barClr}"></div>
         </div>
         <div class="stat-content">
-          <div class="stat-lbl">Tank</div>
+          <div class="stat-lbl">${this._t.fuel}</div>
           <div class="stat-num-row">
             <span class="stat-num" style="color:${txtClr}">${numStr}</span><span class="stat-unit-inline" style="color:${txtClr}">%</span>
           </div>
@@ -260,12 +288,12 @@ class VehicleCard extends HTMLElement {
     return `
       <div class="tile tile-simple clickable" data-entity="${c.climate}">
         <div class="stat-content stat-pad">
-          <div class="stat-lbl">Klimaanlage</div>
+          <div class="stat-lbl">${this._t.climate_tile}</div>
           <div class="climate-pill ${isOn ? 'on' : 'off'}" data-toggle="${c.climate}">
             <span>❄️</span>
-            <span class="climate-lbl">Klima</span>
+            <span class="climate-lbl">${this._t.climate}</span>
             <span class="climate-dot"></span>
-            <span>${isOn ? 'AN' : 'AUS'}</span>
+            <span>${isOn ? this._t.on : this._t.off}</span>
           </div>
         </div>
       </div>`;
@@ -282,7 +310,7 @@ class VehicleCard extends HTMLElement {
     return `
       <div class="tile tile-simple clickable" data-entity="${c.odometer}">
         <div class="stat-content stat-pad">
-          <div class="stat-lbl">km-Stand</div>
+          <div class="stat-lbl">${this._t.odometer}</div>
           <div>
             <div class="stat-num stat-num-sm">${disp}</div>
             <div class="stat-unit">${unit}</div>
@@ -294,6 +322,7 @@ class VehicleCard extends HTMLElement {
   _render() {
     if (!this._config || !this._hass) return;
     const c = this._config;
+    this._t = _getLabels(this._hass, c);
 
     const hasAnyField = ['battery_level','battery_range','charge_status','fuel_level',
       'odometer','climate'].some(k => c[k]);
@@ -515,13 +544,13 @@ class VehicleCard extends HTMLElement {
                     : c.icon)
                 : '🚗'
             }</div>
-            <div class="header-title-text">${c.name || 'Fahrzeug'}</div>
+            <div class="header-title-text">${c.name || this._t.vehicle}</div>
           </div>
           ${badge}
         </div>
         ${hasAnyField
           ? `<div class="card-grid">${tiles}</div>`
-          : '<div class="empty-state">Keine Entitäten konfiguriert</div>'
+          : `<div class="empty-state">${this._t.empty}</div>`
         }
       </div>
     `;

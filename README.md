@@ -2,7 +2,7 @@
 
 A Home Assistant Lovelace custom card for displaying vehicle status. Works with any brand — fully configurable with your own entities.
 
-![Version](https://img.shields.io/badge/version-1.1.1-blue) ![HA](https://img.shields.io/badge/Home%20Assistant-compatible-brightgreen)
+![Version](https://img.shields.io/badge/version-1.2.0-blue) ![HA](https://img.shields.io/badge/Home%20Assistant-compatible-brightgreen)
 
 ![Vehicle Card Screenshot](screenshot.jpg)
 
@@ -15,6 +15,7 @@ A Home Assistant Lovelace custom card for displaying vehicle status. Works with 
 - ❄️ Climate toggle — switchable directly from the card (inside fuel tile, or standalone for EVs)
 - 📍 Odometer — displayed as a pill chip in the card header
 - 🎨 Custom icon — choose any MDI icon via the visual editor
+- 🌐 Translatable UI text — auto-detects your Home Assistant language (German/English built in), or override individual labels
 - 🌙 Dark & modern tile-based design using HA CSS variables
 
 All fields are optional — unconfigured fields are simply hidden.
@@ -59,7 +60,27 @@ charge_state_plugged: "plugged_in"       # optional, default: "plugged_in"
 fuel_level: sensor.car_fuel              # optional
 odometer: sensor.car_odometer            # optional
 climate: switch.car_climate              # optional
+language: auto                           # optional, "auto" | "de" | "en", default: "auto"
+labels:                                  # optional, overrides individual text strings
+  battery: "Battery"
+  fuel: "Fuel"
+  climate: "Climate"
+  climate_tile: "Climate"
+  odometer: "Odometer"
+  "on": "ON"
+  "off": "OFF"
+  charging: "Charging"
+  plugged: "Plugged in"
+  ready: "Ready"
+  vehicle: "Vehicle"
+  empty: "No entities configured"
 ```
+
+### Language & Labels
+
+- `language: auto` (default) uses Home Assistant's configured UI language. German and English are built in; any other language falls back to German.
+- Set `language: de` or `language: en` to force a specific language regardless of the HA UI language.
+- Use `labels` to override any individual string, in any language — this always wins over the built-in translation, so you can mix languages or use custom wording.
 
 ## Warning Colors
 
@@ -76,7 +97,7 @@ climate: switch.car_climate              # optional
 
 Shown inside the battery tile. Adapts to your entity type:
 
-- **`binary_sensor`**: `on` → "Lädt" (green), `off` → "Bereit" (gray)
+- **`binary_sensor`**: `on` → "charging" label (green), `off` → "ready" label (gray)
 - **`sensor`**: mapped via `charge_state_charging` / `charge_state_plugged` config keys; unmapped states are shown as-is
 
 ## Layout

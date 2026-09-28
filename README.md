@@ -6,6 +6,8 @@ A Home Assistant Lovelace custom card for displaying vehicle status. Works with 
 
 ![Vehicle Card Screenshot](screenshot.jpg)
 
+📖 Mehr Hintergrund, Screenshots und FAQ im Blogartikel: [Vehicle Card für Home Assistant auf itrend24.de](https://itrend24.de/vehicle-card-home-assistant/)
+
 ## Features
 
 - 🔋 Battery level with color-coded vertical bar (green / yellow / red)

@@ -27,11 +27,10 @@ All fields are optional — unconfigured fields are simply hidden.
 ### HACS (empfohlen)
 
 1. HACS öffnen → **Frontend**
-2. Drei-Punkte-Menü → **Custom repositories**
-3. URL eingeben: `https://github.com/Cangos655/vehicle-card`
-4. Kategorie: **Lovelace** → **Add**
-5. **Vehicle Card** in der Liste suchen und **Download** klicken
-6. Browser neu laden (Strg+Shift+R)
+2. Nach **Vehicle Card** suchen und **Download** klicken
+3. Browser neu laden (Strg+Shift+R)
+
+Falls die Karte in deiner HACS-Version noch nicht in der Liste erscheint, kann sie als benutzerdefiniertes Repository hinzugefügt werden: Drei-Punkte-Menü → **Custom repositories** → `https://github.com/Cangos655/vehicle-card` → Kategorie **Lovelace**.
 
 ### Manuell
 

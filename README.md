@@ -2,7 +2,7 @@
 
 A Home Assistant Lovelace custom card for displaying vehicle status. Works with any brand — fully configurable with your own entities.
 
-![Version](https://img.shields.io/badge/version-1.3.0-blue) ![HA](https://img.shields.io/badge/Home%20Assistant-compatible-brightgreen)
+![Version](https://img.shields.io/github/v/release/Cangos655/vehicle-card?label=version&color=blue) ![HA](https://img.shields.io/badge/Home%20Assistant-compatible-brightgreen)
 
 ![Vehicle Card Screenshot](screenshot.jpg)
 

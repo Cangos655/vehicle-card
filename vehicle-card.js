@@ -1,4 +1,4 @@
-const CARD_VERSION = "1.3.0";
+const CARD_VERSION = "1.3.1";
 
 // ─── i18n ────────────────────────────────────────────────────────────────────
 const LABELS = {
@@ -462,6 +462,7 @@ class VehicleCard extends HTMLElement {
         /* ── SHARED STAT CONTENT ── */
         .stat-content {
           flex: 1;
+          min-width: 0;
           display: flex;
           flex-direction: column;
           justify-content: space-between;
@@ -521,7 +522,9 @@ class VehicleCard extends HTMLElement {
           font-size: 13px; font-weight: 700; letter-spacing: 0.3px;
           cursor: pointer; transition: opacity 0.15s;
           border: 1px solid transparent;
+          align-self: flex-start; width: max-content; min-width: 100%; max-width: calc(100% + 12px); box-sizing: border-box;
         }
+        .climate-pill > span:not(.climate-lbl) { flex-shrink: 0; }
         .climate-pill:hover  { opacity: 0.75; }
         .climate-pill:active { opacity: 0.5; }
         .climate-pill.on  {
@@ -536,6 +539,8 @@ class VehicleCard extends HTMLElement {
         .climate-lbl {
           font-size: 12px; font-weight: 600;
           margin-right: 2px;
+          min-width: 0; overflow: hidden;
+          text-overflow: ellipsis; white-space: nowrap;
         }
         .climate-dot {
           width: 5px; height: 5px;

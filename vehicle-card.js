@@ -1,4 +1,4 @@
-const CARD_VERSION = "1.2.0";
+const CARD_VERSION = "1.3.0";
 
 // ─── i18n ────────────────────────────────────────────────────────────────────
 const LABELS = {
@@ -36,6 +36,7 @@ const EDITOR_SCHEMA = [
   { name: 'battery_range', label: '📏 Reichweite (Sensor km)',     selector: { entity: {} } },
   { name: 'charge_status', label: '⚡ Ladestatus (Sensor/Binary)', selector: { entity: {} } },
   { name: 'fuel_level',    label: '⛽ Tankstand (Sensor %)',       selector: { entity: {} } },
+  { name: 'fuel_range',    label: '📏 Reichweite Tank (Sensor km)', selector: { entity: {} } },
   { name: 'odometer',      label: '📍 Kilometerstand (Sensor)',    selector: { entity: {} } },
   { name: 'climate',       label: '❄️ Klimaanlage (Switch)',       selector: { entity: { domain: 'switch' } } },
 ];
@@ -243,14 +244,35 @@ class VehicleCard extends HTMLElement {
 
   _fuelTileHtml() {
     const c = this._config, hass = this._hass;
-    if (!c.fuel_level) return '';
-    const val    = _stateVal(hass, c.fuel_level);
-    const numVal = parseFloat(val) || 0;
-    const valid  = val !== null && val !== '—' && val !== '?';
-    const barH   = valid ? Math.min(100, Math.max(0, numVal)).toFixed(1) : 0;
-    const barClr = _fuelBarColor(val);
-    const txtClr = _fuelTextColor(val);
-    const numStr = valid ? val : (val || '—');
+    if (!c.fuel_level && !c.fuel_range) return '';
+
+    // Reichweite (km/mi aus dem Sensor), unabhängig von der Akku-Reichweite
+    const rangeVal   = c.fuel_range ? _stateVal(hass, c.fuel_range) : null;
+    const rangeUnit  = c.fuel_range ? (_getState(hass, c.fuel_range)?.attributes?.unit_of_measurement || 'km') : '';
+    const rangeValid = rangeVal !== null && rangeVal !== '—' && rangeVal !== '?';
+
+    let barHtml = '', numHtml = '', rangeHtml = '';
+    if (c.fuel_level) {
+      const val    = _stateVal(hass, c.fuel_level);
+      const numVal = parseFloat(val) || 0;
+      const valid  = val !== null && val !== '—' && val !== '?';
+      const barH   = valid ? Math.min(100, Math.max(0, numVal)).toFixed(1) : 0;
+      const barClr = _fuelBarColor(val);
+      const txtClr = _fuelTextColor(val);
+      const numStr = valid ? val : (val || '—');
+      barHtml = `
+        <div class="vbar-wrap">
+          <div class="vbar-fill" style="height:${barH}%;background:${barClr}"></div>
+        </div>`;
+      numHtml = `<span class="stat-num" style="color:${txtClr}">${numStr}</span><span class="stat-unit-inline" style="color:${txtClr}">%</span>`;
+      if (c.fuel_range) {
+        rangeHtml = `<div class="tile-bottom"><div class="stat-sub" data-entity="${c.fuel_range}">${rangeValid ? rangeVal + '\u202f' + rangeUnit : (rangeVal || '—')}</div></div>`;
+      }
+    } else {
+      // Nur Reichweite ohne Tankstand: Reichweite als Hauptwert, kein Balken
+      const txtClr = rangeValid ? 'var(--primary-text-color, #1c1c1e)' : 'var(--secondary-text-color, #8e8e93)';
+      numHtml = `<span class="stat-num" style="color:${txtClr}">${rangeValid ? rangeVal : (rangeVal || '—')}</span>${rangeValid ? `<span class="stat-unit-inline" style="color:${txtClr}">${rangeUnit}</span>` : ''}`;
+    }
 
     let climateHtml = '';
     if (c.climate) {
@@ -266,15 +288,13 @@ class VehicleCard extends HTMLElement {
     }
 
     return `
-      <div class="tile tile-vbar clickable" data-entity="${c.fuel_level}">
-        <div class="vbar-wrap">
-          <div class="vbar-fill" style="height:${barH}%;background:${barClr}"></div>
-        </div>
+      <div class="tile tile-vbar clickable" data-entity="${c.fuel_level || c.fuel_range}">${barHtml}
         <div class="stat-content">
           <div class="stat-lbl">${this._t.fuel}</div>
           <div class="stat-num-row">
-            <span class="stat-num" style="color:${txtClr}">${numStr}</span><span class="stat-unit-inline" style="color:${txtClr}">%</span>
+            ${numHtml}
           </div>
+          ${rangeHtml}
           ${climateHtml}
         </div>
       </div>`;
@@ -324,13 +344,13 @@ class VehicleCard extends HTMLElement {
     const c = this._config;
     this._t = _getLabels(this._hass, c);
 
-    const hasAnyField = ['battery_level','battery_range','charge_status','fuel_level',
+    const hasAnyField = ['battery_level','battery_range','charge_status','fuel_level','fuel_range',
       'odometer','climate'].some(k => c[k]);
 
     const badge   = this._odometerPillHtml();
     const battery = this._batteryTileHtml();
     const fuel    = this._fuelTileHtml();
-    const climate = c.climate && !c.fuel_level ? this._climateTileHtml() : '';
+    const climate = c.climate && !c.fuel_level && !c.fuel_range ? this._climateTileHtml() : '';
     const tiles   = [battery, fuel, climate].filter(Boolean).join('');
 
     this.shadowRoot.innerHTML = `

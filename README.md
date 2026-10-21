@@ -2,7 +2,7 @@
 
 A Home Assistant Lovelace custom card for displaying vehicle status. Works with any brand — fully configurable with your own entities.
 
-![Version](https://img.shields.io/badge/version-1.2.0-blue) ![HA](https://img.shields.io/badge/Home%20Assistant-compatible-brightgreen)
+![Version](https://img.shields.io/badge/version-1.3.0-blue) ![HA](https://img.shields.io/badge/Home%20Assistant-compatible-brightgreen)
 
 ![Vehicle Card Screenshot](screenshot.jpg)
 
@@ -14,6 +14,7 @@ A Home Assistant Lovelace custom card for displaying vehicle status. Works with 
 - 📏 Estimated range — shown below battery percentage
 - ⚡ Charge status badge inside the battery tile (Lädt / Verbunden / Bereit)
 - ⛽ Fuel level with warning colors (for hybrids / combustion vehicles)
+- 📏 Fuel range — shown below the fuel level, independent of the battery range (optional; works for combustion and plug-in hybrid vehicles, or on its own without a fuel level)
 - ❄️ Climate toggle — switchable directly from the card (inside fuel tile, or standalone for EVs)
 - 📍 Odometer — displayed as a pill chip in the card header
 - 🎨 Custom icon — choose any MDI icon via the visual editor
@@ -59,6 +60,7 @@ charge_status: sensor.car_charging       # optional
 charge_state_charging: "charging"        # optional, default: "charging"
 charge_state_plugged: "plugged_in"       # optional, default: "plugged_in"
 fuel_level: sensor.car_fuel              # optional
+fuel_range: sensor.car_fuel_range        # optional, unit (km / mi) is taken from the sensor
 odometer: sensor.car_odometer            # optional
 climate: switch.car_climate              # optional
 language: auto                           # optional, "auto" | "de" | "en", default: "auto"
@@ -104,7 +106,8 @@ Shown inside the battery tile. Adapts to your entity type:
 ## Layout
 
 - **Pure EV** (no fuel): Battery tile + Climate tile side by side
-- **Hybrid / combustion**: Battery tile (with range + charge status) + Fuel tile (with climate toggle)
+- **Hybrid / combustion**: Battery tile (with range + charge status) + Fuel tile (with optional fuel range and climate toggle)
+- **Fuel range only** (no `fuel_level`): the Fuel tile shows the range as its main value, without a bar
 - **Header**: Car name with custom icon + odometer pill chip
 
 ## License

@@ -1,3 +1,5 @@
+<p align="center"><img src="assets/icon.png" alt="Vehicle Card" width="112"></p>
+
 # Vehicle Card
 
 A Home Assistant Lovelace custom card for displaying vehicle status. Works with any brand — fully configurable with your own entities.

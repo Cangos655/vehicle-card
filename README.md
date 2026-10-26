@@ -112,6 +112,10 @@ Shown inside the battery tile. Adapts to your entity type:
 - **Fuel range only** (no `fuel_level`): the Fuel tile shows the range as its main value, without a bar
 - **Header**: Car name with custom icon + odometer pill chip
 
+## Unterstützen
+
+Die Karte ist kostenlos und bleibt es. Wenn sie dir gefällt und du mich unterstützen möchtest, freue ich mich über einen Kaffee: [paypal.me/itrend24](https://www.paypal.me/itrend24)
+
 ## License
 
 MIT
